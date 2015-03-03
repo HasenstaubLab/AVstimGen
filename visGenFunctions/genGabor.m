@@ -1,0 +1,2 @@
+function gabortex = genGabor(visual)
+
