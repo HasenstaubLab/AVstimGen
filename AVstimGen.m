@@ -213,22 +213,37 @@ if ~isempty(vars_loop)
     end
     
     if cyc>num_combs % expand vars_loop to fit requested size
-        vals_loop_temp = repmat(vals_loop, floor(cyc/num_combs), 1); 
-        m = mod(cyc, num_combs); 
-        vals_loop = [vals_loop_temp; vals_loop(1:m,:)];
-        
-        if size(vals_loop,1) ~= cyc % sanity check 
-            error(' AVstimGen: mismatch between requested cycles and vars_loop size'); 
+         m = mod(cyc, num_combs); 
+         numreps = floor(cyc/num_combs); 
+        if handles.random_loop 
+            vals_loop_temp = []; 
+            for q = 1:numreps
+                vals_loop_temp = [vals_loop_temp; vals_loop(randperm(length(vals_loop)),:)];
+            end
+            vals_loop_extra = vals_loop(1:m,:); 
+            vals_loop = [vals_loop_temp; vals_loop_extra(randperm(length(vals_loop_extra)),:)]; 
+        else
+            vals_loop_temp = repmat(vals_loop, floor(cyc/num_combs), 1);
+            m = mod(cyc, num_combs);
+            vals_loop = [vals_loop_temp; vals_loop(1:m,:)];
         end
-    elseif cyc<num_combs % if smaller take the first n param combinations, n = cyc 
-        fprintf('\nFewer cycles than number of stim combinations. Taking the first %d \n', cyc); 
-        vals_loop = vals_loop(1:cyc,:); 
+        
+        if size(vals_loop,1) ~= cyc % sanity check
+            error(' AVstimGen: mismatch between requested cycles and vars_loop size');
+        end
+    elseif cyc<num_combs % if smaller take the first n param combinations, n = cyc
+        fprintf('\nFewer cycles than number of stim combinations. Taking the first %d \n', cyc);
+        vals_loop = vals_loop(1:cyc,:);
+        if handles.random_loop
+            rand_ind = randperm(length(vals_loop));
+            vals_loop = vals_loop(rand_ind,:);
+        end
     end
     
-    if handles.random_loop && ~isempty(vals_loop)
-        rand_ind = randperm(length(vals_loop));
-        vals_loop = vals_loop(rand_ind,:);
-    end
+%     if handles.random_loop && ~isempty(vals_loop)
+%         rand_ind = randperm(length(vals_loop));
+%         vals_loop = vals_loop(rand_ind,:);
+%     end
 end
 
 if params.loop_mode
