@@ -1556,11 +1556,6 @@ end
 
 guidata(hObject, handles); 
 
-handles.light = ~strcmp(get(get(handles.light_panel, 'SelectedObject'), 'String'), 'No light');
-handles.aud = ~strcmp(get(get(handles.aud_stim_panel, 'SelectedObject'), 'String'), 'No auditory');
-handles.vis = ~strcmp(get(get(handles.vis_stim_panel, 'SelectedObject'), 'String'), 'No visual');
-
-guidata(hObject, handles); 
 
 % --- Executes on button press in save_params_push.
 function save_params_push_Callback(hObject, eventdata, handles)
@@ -1648,14 +1643,14 @@ if isfield(handles, 'spk_cal_file')
     guiState.spk_cal_file = handles.spk_cal_file;
 end
 
+set(handles.
+
 [save_file,save_dir] = uiputfile('*.mat', 'Save params file as...'); 
 dir_old = cd; 
 cd(save_dir); 
 save(save_file, 'guiState'); 
 cd(dir_old); 
 
-set(handles.loaded_params_txt, 'String', save_file); 
-guidata(hObject, handles); 
 
 % --- Executes on button press in speaker_cal_push.
 function speaker_cal_push_Callback(hObject, eventdata, handles)

@@ -3,7 +3,7 @@ function y = genSinTone(dur, freq, Fs, ~)
 
 rampSize = 6e-3; % ramp size of 3ms 
 
-hanwin = hanning(rampSize*Fs); 
+hanwin = hanning(round(rampSize*Fs)); 
 rampUp = hanwin(1:round(end/2)); 
 rampDown = hanwin(round(end/2)+1:end); 
 

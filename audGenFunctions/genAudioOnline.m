@@ -21,10 +21,11 @@ if ~strcmp(char(audio.genFunc), 'genNoAudio')
     b = fir1(n, Wn, 'high');
     audio_data = filtfilt(b,1,audio_data);
     
-%     % apply speaker calibration filter 
-%     if isfield(audio, 'spk_cal_filt')
-%         audio_data = filtfilt(audio.spk_cal_filt, 1, audio_data); 
-%     end
+    % apply speaker calibration filter 
+    if isfield(audio, 'spk_cal_filt')
+        audio_data = filtfilt(audio.spk_cal_filt, 1, audio_data); 
+        disp('Speaker calibration filter applied'); 
+    end
     
     % apply attenuation
     if audio.atten(ind) ~= 0
