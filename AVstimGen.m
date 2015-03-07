@@ -90,16 +90,7 @@ switch currdev.NrOutputChannels
     case 4
 end
 
-handles.SOA = str2double(get(handles.SOA_edit, 'String'));
-handles.trialLen = str2double(get(handles.trial_len_edit, 'String'));
-handles.stimStart = str2double(get(handles.stim_start_edit, 'String'));
-handles.visDur = str2double(get(handles.dur_vis_edit, 'String'));
-handles.audDur = str2double(get(handles.dur_aud_edit, 'String'));
-handles.lightStart = str2double(get(handles.light_start_edit, 'String'));
-handles.lightStop = str2double(get(handles.light_stop_edit, 'String'));
-handles.light = ~strcmp(get(get(handles.light_panel, 'SelectedObject'), 'String'), 'No light');
-handles.aud = ~strcmp(get(get(handles.aud_stim_panel, 'SelectedObject'), 'String'), 'No auditory');
-handles.vis = ~strcmp(get(get(handles.vis_stim_panel, 'SelectedObject'), 'String'), 'No visual');
+handles = updateHandlesStruct(handles); 
 
 % for keeping track of expts
 
@@ -1464,6 +1455,11 @@ function load_params_push_Callback(hObject, eventdata, handles)
 
 dir_old = cd; 
 [ld_file ld_dir] = uigetfile('*.mat', 'Load GUI paramaters file'); 
+if ld_file == 0 
+    disp('User canceled load params file, no file loaded.'); 
+    return 
+end
+
 cd(ld_dir); 
 load(ld_file); 
 cd(dir_old); 
@@ -1556,11 +1552,10 @@ end
 
 guidata(hObject, handles); 
 
-handles.light = ~strcmp(get(get(handles.light_panel, 'SelectedObject'), 'String'), 'No light');
-handles.aud = ~strcmp(get(get(handles.aud_stim_panel, 'SelectedObject'), 'String'), 'No auditory');
-handles.vis = ~strcmp(get(get(handles.vis_stim_panel, 'SelectedObject'), 'String'), 'No visual');
-
+handles = updateHandlesStruct(handles);
 guidata(hObject, handles); 
+
+plotTrialStruct(handles); 
 
 % --- Executes on button press in save_params_push.
 function save_params_push_Callback(hObject, eventdata, handles)
@@ -1663,14 +1658,16 @@ function speaker_cal_push_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 [spk_cal_file,spk_cal_dir] = uigetfile('*.mat', 'Load speaker calibration file', 'Speaker calibration file');
-if ~spk_cal_file == 0 
+if spk_cal_file == 0 
+    set(handles.loaded_spk_cal_txt, 'String', []);
+    handles.spk_cal_file = [];
+    guidata(hObject, handles);
+else
     addpath(spk_cal_dir);
     set(handles.loaded_spk_cal_txt, 'String', spk_cal_file);
     handles.spk_cal_file = fullfile(spk_cal_dir, spk_cal_file);
-    guidata(hObject, handles);
 end
-
-
+guidata(hObject, handles);
 
 function exp_name_edit_Callback(hObject, eventdata, handles)
 % hObject    handle to exp_name_edit (see GCBO)
@@ -2160,3 +2157,17 @@ function soundcard_popup_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+    function handles = updateHandlesStruct(handles)
+        handles.SOA = str2double(get(handles.SOA_edit, 'String'));
+        handles.trialLen = str2double(get(handles.trial_len_edit, 'String'));
+        handles.stimStart = str2double(get(handles.stim_start_edit, 'String'));
+        handles.visDur = str2double(get(handles.dur_vis_edit, 'String'));
+        handles.audDur = str2double(get(handles.dur_aud_edit, 'String'));
+        handles.lightStart = str2double(get(handles.light_start_edit, 'String'));
+        handles.lightStop = str2double(get(handles.light_stop_edit, 'String'));
+        handles.light = ~strcmp(get(get(handles.light_panel, 'SelectedObject'), 'String'), 'No light');
+        handles.aud = ~strcmp(get(get(handles.aud_stim_panel, 'SelectedObject'), 'String'), 'No auditory');
+        handles.vis = ~strcmp(get(get(handles.vis_stim_panel, 'SelectedObject'), 'String'), 'No visual');
+        
+        

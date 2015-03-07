@@ -9,7 +9,7 @@ one_ms = Fs/1000;
 
 triang_win_on = triang(round(one_ms*(ramp_on_dur)));
 triang_win_off = triang(round(one_ms*(ramp_off_dur)));
-click_noise = rand(1,round(one_ms*(click_dur+ramp_on_dur+ramp_off_dur))); 
+click_noise = rand(1,round(one_ms*(click_dur+ramp_on_dur+ramp_off_dur)))*2-1; % scale from +1/-1 
 
 ramp_on = triang_win_on(1:floor(length(triang_win_on)/2)); 
 ramp_off = triang_win_off(ceil(length(triang_win_off)/2)+1:end); 

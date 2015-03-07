@@ -16,16 +16,45 @@ end
 if ~strcmp(char(audio.genFunc), 'genNoAudio')
     aud_trial = 1; 
     % apply 4kHz highpass zero-phase filter
-    Wn = 4e3/(0.5*audio.Fs);
-    n = 100; % 100th order filter
+    Wn = 3.9e3/(0.5*audio.Fs); % pass above 3.9 kHz 
+    n = 1000; % 1000th order filter (before 100-order was too low) 
     b = fir1(n, Wn, 'high');
     audio_data = filtfilt(b,1,audio_data);
-    
+   
     % apply speaker calibration filter 
     if isfield(audio, 'spk_cal_filt')
-        audio_data = filtfilt(audio.spk_cal_filt, 1, audio_data); 
+        % audio_data2 = filtfilt(audio.spk_cal_filt, 1, audio_data); %
+        % DON'T USE FILTFILT
+        audio_data = filter(audio.spk_cal_filt, 1, audio_data); 
         disp('Speaker calibration filter applied'); 
     end
+%     
+%     p.tapers = [4 7];
+%     p.Fs = 192000; 
+%     [S,f] = mtspectrumc(audio_data, p); 
+%     [S2,f2] = mtspectrumc(audio_data2, p); 
+%     sca
+%     
+%     figure; 
+%     plot(f, smooth(S,100), 'b'); 
+%     hold on
+%     plot(f2, smooth(S2,100), 'r'); 
+%     legend({'WN before spkr filt', 'After spkr filt'})
+%     xlabel('Freq');
+%     ylabel('Power units'); 
+%     set(gca, 'FontSize', 12); 
+%     
+%     figure; 
+%     plot(audio_data(1:19200)); 
+%     hold on
+%     plot(audio_data2(1:19200), 'r');
+%     keyboard
+    
+    
+%     keyboard
+%     
+    % apply rms normalization 
+    
     
     % apply attenuation
     if audio.atten(ind) ~= 0
