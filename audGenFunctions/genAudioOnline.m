@@ -57,9 +57,13 @@ if ~strcmp(char(audio.genFunc), 'genNoAudio')
     
     
     % apply attenuation
-    if audio.atten(ind) ~= 0
-        audio_data = audio_data*audio.atten(ind);
-    end
+    %if audio.atten(ind) ~= 0
+        atten = 10^-((audio.atten(ind) + audio.offset_atten)/20);
+        audio_data = audio_data*atten;
+        disp('********************************************************************')
+disp(['ATTEN ' num2str(atten)]); 
+disp('********************************************************************')
+%    end
 else
     aud_trial = 0; 
 end

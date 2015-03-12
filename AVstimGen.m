@@ -7,7 +7,7 @@ function varargout = AVstimGen(varargin)
 % 
 % Ryan Morrill, 2014 
 
-% Last Modified by GUIDE v2.5 07-Feb-2015 17:01:01
+% Last Modified by GUIDE v2.5 10-Mar-2015 18:24:51
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -169,6 +169,7 @@ else
 end
 
 handles.random_loop = get(handles.random_loops_check, 'Value');
+
 [vars_loop vals_loop] = queryLoopsBox(handles);
 
 if isempty(vars_loop) && isempty(vals_loop)
@@ -222,8 +223,10 @@ if ~isempty(vars_loop)
         if size(vals_loop,1) ~= cyc % sanity check
             error(' AVstimGen: mismatch between requested cycles and vars_loop size');
         end
-    elseif cyc<num_combs % if smaller take the first n param combinations, n = cyc
-        fprintf('\nFewer cycles than number of stim combinations. Taking the first %d \n', cyc);
+    else
+        if cyc<num_combs % if smaller take the first n param combinations, n = cyc
+            fprintf('\nFewer cycles than number of stim combinations. Taking the first %d \n', cyc);
+        end
         vals_loop = vals_loop(1:cyc,:);
         if handles.random_loop
             rand_ind = randperm(length(vals_loop));
@@ -360,9 +363,6 @@ else
     visual.vis_stim = ones(1,cyc); % defaults to having visual stimulus on every trial
 end
 
-% send messages?
-params.send_messages = handles.send_messages;
-params.pub_messages = handles.pub_messages;
 
 % AUDIO
 % set the general audio params here (mode-specific params set in switch
@@ -385,9 +385,9 @@ else
 end
 
 if ~isempty(loop_audio_atten)
-    audio.atten = 10.^-(vals_loop(:,loop_audio_atten)/20);
+    audio.atten = vals_loop(:,loop_audio_atten);
 else
-    atten = 10^-(str2double(get(handles.atten_edit, 'String'))/20);
+    atten = str2double(get(handles.atten_edit, 'String'));
     audio.atten = repmat(atten,1,cyc);
 end
 
@@ -395,28 +395,6 @@ audio.AM_flag = get(handles.AM_check, 'Value');
 if audio.AM_flag
     audio.AM_freq = str2double(get(handles.AM_freq_edit, 'String'));
 end
-
-audio.pad_len = 10; % 
-% audio.trig1params = [1 audio.Fs*1e-3]; % structure of this?
-% audio.trig2params = [1 audio.Fs*1e-3];
-% audio.trigFreq = 10e3;
-% audio.pad1Len = 0;
-% audio.pad2Len = 0;
-% audio.pad1Len = str2double(get(handles.pad1Len_edit, 'String'));
-% audio.pad2Len = str2double(get(handles.pad2Len_edit, 'String'));
-% audio.ASIOind = handles.ASIOind;
-
-% VISUAL
-visual.restScrCol = get(get(handles.rest_color_panel, 'SelectedObject'), 'String');
-visual.dur = handles.visDur;
-visual.height = str2double(get(handles.vis_height_edit, 'String'));
-visual.width = str2double(get(handles.vis_width_edit, 'String'));
-visual.contrast = str2double(get(handles.contrast_edit, 'String'))/100*0.5;
-visual.frequency_pixel = 1/str2double(get(handles.vis_freq_edit, 'String'));
-visual.cycles_perSec = str2double(get(handles.cycles_per_sec_edit, 'String'));
-visual.angle = str2double(get(handles.angle_edit, 'String'));
-visual.rotateMode = [];
-visual.sin_varying = get(handles.sinusoidal_check, 'Value');
 
 aud_select = get(get(handles.aud_stim_panel, 'SelectedObject'), 'String');
 sprintf('\n Selected audio is %s \n', aud_select);
@@ -456,6 +434,31 @@ switch aud_select
         audio.genFunc = @genNoAudio;
         audio.params_other = [];
 end
+
+audio.pad_len = 10; % IS THIS USED ANYWHERE?
+audio.offset_atten = str2double(get(handles.offset_atten_edit, 'String')); 
+
+% audio.trig1params = [1 audio.Fs*1e-3]; % structure of this?
+% audio.trig2params = [1 audio.Fs*1e-3];
+% audio.trigFreq = 10e3;
+% audio.pad1Len = 0;
+% audio.pad2Len = 0;
+% audio.pad1Len = str2double(get(handles.pad1Len_edit, 'String'));
+% audio.pad2Len = str2double(get(handles.pad2Len_edit, 'String'));
+% audio.ASIOind = handles.ASIOind;
+
+% VISUAL
+visual.restScrCol = get(get(handles.rest_color_panel, 'SelectedObject'), 'String');
+visual.dur = handles.visDur;
+visual.height = str2double(get(handles.vis_height_edit, 'String'));
+visual.width = str2double(get(handles.vis_width_edit, 'String'));
+visual.contrast = str2double(get(handles.contrast_edit, 'String'))/100*0.5;
+visual.frequency_pixel = 1/str2double(get(handles.vis_freq_edit, 'String'));
+visual.cycles_perSec = str2double(get(handles.cycles_per_sec_edit, 'String'));
+visual.angle = str2double(get(handles.angle_edit, 'String'));
+visual.rotateMode = [];
+visual.sin_varying = get(handles.sinusoidal_check, 'Value');
+
 
 switch vis_select
     case 'Flash'
@@ -513,6 +516,10 @@ switch vis_select
         visual.noVisual = 1; 
 end
 
+% send messages?
+params.send_messages = handles.send_messages;
+params.pub_messages = handles.pub_messages;
+
 dir_old = cd;
 %cd(AVstimDir)
 session_save.dir = [handles.AVstimDir 'StimData']; 
@@ -537,7 +544,6 @@ visual.syncFlashDur = 30/1000; %30ms
 visual.syncFlashDims = [0 0 100 100];
 % visual.flashFreq = 5;
 
-%keyboard
 AVengine(audio, visual, params, handles.status_text, handles.tcp_handle, handles.pub_socket, session_save);
 
 
@@ -1454,9 +1460,13 @@ function load_params_push_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 dir_old = cd; 
+cd(fullfile(handles.AVstimDir, 'Experiment Parameters')); 
 [ld_file ld_dir] = uigetfile('*.mat', 'Load GUI paramaters file'); 
+
+
 if ld_file == 0 
     disp('User canceled load params file, no file loaded.'); 
+    cd(dir_old); 
     return 
 end
 
@@ -1533,6 +1543,7 @@ set(handles.fs_popup, 'Value', guiState.fs_popup);
 set(handles.data_tcp_edit, 'String', guiState.data_tcp_edit); 
 set(handles.exp_name_edit, 'String', guiState.exp_name_edit); 
 set(handles.loaded_spk_cal_txt, 'String', guiState.loaded_spk_cal_txt); 
+set(handles.offset_atten_edit, 'String', guiState.offset_atten_edit); 
 
 set(handles.ch1_popup, 'Value', guiState.ch1_popup); 
 set(handles.ch2_popup, 'Value', guiState.ch2_popup); 
@@ -1626,7 +1637,8 @@ guiState.ISI_range_check = get(handles.ISI_range_check, 'Value');
 guiState.fs_popup = get(handles.fs_popup, 'Value'); 
 guiState.data_tcp_edit = get(handles.data_tcp_edit, 'String'); 
 guiState.exp_name_edit = get(handles.exp_name_edit, 'String'); 
-guiState.loaded_spk_cal_txt = get(handles.loaded_spk_cal_txt, 'String'); 
+guiState.loaded_spk_cal_txt = get(handles.loaded_spk_cal_txt, 'String');
+guiState.offset_atten_edit = get(handles.offset_atten_edit, 'String'); 
 
 guiState.ch1_popup = get(handles.ch1_popup, 'Value'); 
 guiState.ch2_popup = get(handles.ch2_popup, 'Value'); 
@@ -1657,7 +1669,10 @@ function speaker_cal_push_Callback(hObject, eventdata, handles)
 % hObject    handle to speaker_cal_push (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+dir_old = cd; 
+cd(fullfile(handles.AVstimDir, 'SpeakerCalFiles')); 
 [spk_cal_file,spk_cal_dir] = uigetfile('*.mat', 'Load speaker calibration file', 'Speaker calibration file');
+cd(dir_old); 
 if spk_cal_file == 0 
     set(handles.loaded_spk_cal_txt, 'String', []);
     handles.spk_cal_file = [];
@@ -2171,3 +2186,26 @@ end
         handles.vis = ~strcmp(get(get(handles.vis_stim_panel, 'SelectedObject'), 'String'), 'No visual');
         
         
+
+
+
+function offset_atten_edit_Callback(hObject, eventdata, handles)
+% hObject    handle to offset_atten_edit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of offset_atten_edit as text
+%        str2double(get(hObject,'String')) returns contents of offset_atten_edit as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function offset_atten_edit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to offset_atten_edit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
