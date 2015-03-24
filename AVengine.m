@@ -375,7 +375,7 @@ for j = 1:params.cycles
     act_st_time = pastatus.StartTime;
     % expect_end_time = pastatus.EstimatedStopTime;
 
-    fprintf('\nPA status is %i\n', pastatus.Active)
+    %fprintf('\nPA status is %i\n', pastatus.Active)
     while pastatus.Active
         pastatus = PsychPortAudio('GetStatus', pahandle);
         [kDown, dummy, kCode] = KbCheck;

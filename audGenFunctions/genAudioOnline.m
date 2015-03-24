@@ -60,9 +60,9 @@ if ~strcmp(char(audio.genFunc), 'genNoAudio')
     %if audio.atten(ind) ~= 0
         atten = 10^-((audio.atten(ind) + audio.offset_atten)/20);
         audio_data = audio_data*atten;
-        disp('********************************************************************')
-disp(['ATTEN ' num2str(atten)]); 
-disp('********************************************************************')
+%         disp('********************************************************************')
+% disp(['ATTEN ' num2str(atten)]); 
+% disp('********************************************************************')
 %    end
 else
     aud_trial = 0; 
@@ -70,12 +70,17 @@ end
 
 % add triggers
 
-if params.allTriggersOneCh 
-    triggerCh = addTriggersOneCh(audio.dur(ind), params.trialLen, params.stimStart(ind), params.SOA(ind), aud_trial, params.lightStart(ind),...
-        params.lightStop(ind), params.light_trial(ind), audio.Fs); 
-    trialLen = length(triggerCh); 
-   audCh = padAudio(audio_data, params.stimStart(ind), params.SOA(ind), trialLen, audio.Fs); 
-   audio_allChs = assignAudChs(audio.numChans, params.chSelect, audCh, [], triggerCh, []);
+if params.allTriggersOneCh
+    if ~isempty(params.lightTest)
+        triggerCh = addLightTestTrigs(params.lightTest, params.trialLen, audio.Fs);
+        audCh = zeros(1,length(triggerCh)); 
+    else
+        triggerCh = addTriggersOneCh(audio.dur(ind), params.trialLen, params.stimStart(ind), params.SOA(ind), aud_trial, params.lightStart(ind),...
+            params.lightStop(ind), params.light_trial(ind), audio.Fs);
+        trialLen = length(triggerCh);
+        audCh = padAudio(audio_data, params.stimStart(ind), params.SOA(ind), trialLen, audio.Fs);
+    end
+    audio_allChs = assignAudChs(audio.numChans, params.chSelect, audCh, [], triggerCh, []);
 else
     trTrCh = addTrialTriggers(params.trialLen, audio.Fs); % calculate trial triggers
     %trTrCh = addTrialTriggers2(params.trialLen, audio.Fs);

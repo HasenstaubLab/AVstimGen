@@ -7,7 +7,7 @@ function varargout = AVstimGen(varargin)
 % 
 % Ryan Morrill, 2014 
 
-% Last Modified by GUIDE v2.5 10-Mar-2015 18:24:51
+% Last Modified by GUIDE v2.5 23-Mar-2015 18:13:19
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -114,6 +114,8 @@ handles.lastexpno = lastexpno;
 
 handles.send_messages = 0;
 handles.pub_messages = 0; 
+
+handles.lightTest = ''; 
 
 plotTrialStruct(handles);
 
@@ -514,6 +516,16 @@ switch vis_select
         visual.useMovie = 0; 
         visual.useFlashMode = 0;
         visual.noVisual = 1; 
+end
+
+% light test 
+params.lightTest = handles.lightTest;
+if ~isempty(params.lightTest)
+    light_test_quest_ans = questdlg(sprintf('You are about to perform %s', params.lightTest), 'Light Test', 'Yes', 'No', 'Yes');
+    drawnow; pause(0.05);
+    if strmatch(light_test_quest_ans, 'No')
+        return
+    end
 end
 
 % send messages?
@@ -1241,7 +1253,7 @@ if handles.aud
     plot([aStop_pl aStop_pl], [4 6], 'b-', 'LineWidth', 1.5);
 end
 % plot light stim
-if handles. light
+if handles.light
     h(4) = plot([handles.lightStart handles.lightStop], [7 7], 'c-', 'LineWidth', 1.5);
     plot([handles.lightStart handles.lightStart], [6 8], 'c-', 'LineWidth', 1.5);
     plot([handles.lightStop handles.lightStop], [6 8], 'c-', 'LineWidth', 1.5);
@@ -1294,14 +1306,30 @@ function light_panel_SelectionChangeFcn(hObject, eventdata, handles)
 %	OldValue: handle of the previously selected object or empty if none was selected
 %	NewValue: handle of the currently selected object
 % handles    structure with handles and user data (see GUIDATA)
-handles.light = ~strcmp(get(get(handles.light_panel, 'SelectedObject'), 'String'), 'No light');
+light_sel = get(get(handles.light_panel, 'SelectedObject'), 'String');
+handles.light = ~strcmp(light_sel, 'No light');
+lightTestFlag = strcmp(light_sel, 'Light Test Fast') | strcmp(light_sel, 'Light Test Slow');
+
 if ~handles.light
     set(handles.light_start_edit, 'Enable', 'off');
     set(handles.light_stop_edit, 'Enable', 'off');
 else
-    set(handles.light_start_edit, 'Enable', 'on');
-    set(handles.light_stop_edit, 'Enable', 'on');
+    if lightTestFlag
+        handles.lightTest = light_sel;
+        handles.vis = 0;
+        handles.aud = 0;
+        set(handles.vis_stim_panel, 'SelectedObject', handles.no_visual_radio);
+        set(handles.aud_stim_panel, 'SelectedObject', handles.no_auditory_radio);
+        set(handles.light_start_edit, 'Enable', 'off');
+        set(handles.light_stop_edit, 'Enable', 'off');
+        fprintf('\n%s selected\n', light_sel);
+    else
+        handles.lightTest = '';
+        set(handles.light_start_edit, 'Enable', 'on');
+        set(handles.light_stop_edit, 'Enable', 'on');
+    end
 end
+
 plotTrialStruct(handles);
 guidata(hObject, handles);
 
@@ -2209,3 +2237,5 @@ function offset_atten_edit_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
