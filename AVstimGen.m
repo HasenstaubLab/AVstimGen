@@ -242,6 +242,8 @@ if ~isempty(vars_loop)
 %     end
 end
 
+%test
+
 if params.loop_mode
     msg_content = '';
     for i = 1:numel(vars_loop)
@@ -555,6 +557,7 @@ pause(0.2);
 visual.syncFlashDur = 30/1000; %30ms
 visual.syncFlashDims = [0 0 100 100];
 % visual.flashFreq = 5;
+
 
 AVengine(audio, visual, params, handles.status_text, handles.tcp_handle, handles.pub_socket, session_save);
 
