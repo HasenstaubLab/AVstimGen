@@ -522,6 +522,7 @@ end
 
 % light test 
 params.lightTest = handles.lightTest;
+
 if ~isempty(params.lightTest)
     light_test_quest_ans = questdlg(sprintf('You are about to perform %s', params.lightTest), 'Light Test', 'Yes', 'No', 'Yes');
     drawnow; pause(0.05);

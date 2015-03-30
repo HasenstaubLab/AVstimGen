@@ -30,4 +30,5 @@ numReps = floor((length(triggerCh) - length(pad*2))/length(pulse));
 triggers = [pad repmat(pulse,1,numReps) pad]; 
 triggerCh(1:length(triggers)) = triggers; 
 
+
 %plot(triggerCh); 

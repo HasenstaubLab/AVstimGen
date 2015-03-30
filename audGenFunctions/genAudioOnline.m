@@ -73,7 +73,8 @@ end
 if params.allTriggersOneCh
     if ~isempty(params.lightTest)
         triggerCh = addLightTestTrigs(params.lightTest, params.trialLen, audio.Fs);
-        audCh = zeros(1,length(triggerCh)); 
+        trialLen = length(triggerCh); 
+        audCh = zeros(1,trialLen); 
     else
         triggerCh = addTriggersOneCh(audio.dur(ind), params.trialLen, params.stimStart(ind), params.SOA(ind), aud_trial, params.lightStart(ind),...
             params.lightStop(ind), params.light_trial(ind), audio.Fs);
@@ -105,6 +106,6 @@ t2 = GetSecs;
 buffhandle = PsychPortAudio('CreateBuffer', pahandle, audio_allChs); % IS THIS THE BEST WAY?
 
 disp(['Call to genAudioOnline took ' num2str(t2-t1)]); 
-disp(['Trial length ' num2str(trialLen, 10)]); 
+disp(['Trial length ' num2str(trialLen/audio.Fs, 10)]); 
 
 

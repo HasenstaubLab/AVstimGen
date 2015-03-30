@@ -275,189 +275,200 @@ end
 buffhandle = genAudioOnline(pahandle, audio, params, lpind); % first call to genAudioOnline
 PsychPortAudio('FillBuffer', pahandle, buffhandle);
 
+[kDown, dummy, kCode] = KbCheck; % add in an early exit flag for quick abort 
+if kDown
+    disp('Keystroke recognized')
+    if kCode(escapeKey)
+        disp('ESC key recognized: aborting session, NO STIM PLAYED...')
+        %stop_it(pahandle, status_handles);
+        exit_flag = 1;
+    end
+end
 
-for j = 1:params.cycles
-    %%%%% RJM 010915
-    % zeroMQwrapper('Send',tcp_handle ,'TrialStart 2');
-    %%%%
-    
-    % three types of movie production: use premade movie (visual.useMovie)
-    % use procedural textures (visual.useProceduralTex)
-    % use flashes (visual.useFlashMode)
-    
-    if visual.useMovie
-        vbl = Screen('Flip', win);
-        PsychPortAudio('Start', pahandle);
-        % movie = Screen('OpenMovie', win, [%%%REPLACE W MOVIE FILE]);
-        %end
-        if visual.vis_stim(j)
-            for i=1:movieDurFrames
-                if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
-                    Screen('FillRect', win, white, syncFlashDims);
-                end
-                
-                % Draw image:
-                Screen('DrawTexture', win, tex(movieFrameIndices(i)));
-                vbl = Screen('Flip', win, (vbl+0.5*ifi));
-            end
-        end
+if ~exit_flag
+    for j = 1:params.cycles
+        %%%%% RJM 010915
+        % zeroMQwrapper('Send',tcp_handle ,'TrialStart 2');
+        %%%%
         
-    elseif visual.useProceduralTex
-        PsychPortAudio('Start', pahandle);
-        vbl = Screen('Flip', win);
-        if visual.vis_stim(j)
-            for i = 1:movieDurFrames
-                
-                if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
-                    Screen('FillRect', win, white, syncFlashDims);
-                end
-                
-                Screen('DrawTexture', win, texHandle, [], [], visual.angle, ...
-                    [], [], [], [], visual.rotateMode, [PTparams{:}]);
-                %vbl = Screen('Flip', win, (vbl+0.5*ifi));
-                vbl = Screen('Flip', win);
-                if visual.updatePhase
-                    PTparams{1} = PTparams{1} + phase_inc;
+        % three types of movie production: use premade movie (visual.useMovie)
+        % use procedural textures (visual.useProceduralTex)
+        % use flashes (visual.useFlashMode)
+        
+        if visual.useMovie
+            vbl = Screen('Flip', win);
+            PsychPortAudio('Start', pahandle);
+            % movie = Screen('OpenMovie', win, [%%%REPLACE W MOVIE FILE]);
+            %end
+            if visual.vis_stim(j)
+                for i=1:movieDurFrames
+                    if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
+                        Screen('FillRect', win, white, syncFlashDims);
+                    end
+                    
+                    % Draw image:
+                    Screen('DrawTexture', win, tex(movieFrameIndices(i)));
+                    vbl = Screen('Flip', win, (vbl+0.5*ifi));
                 end
             end
-        end
-        
-        
-    elseif visual.useFlashMode % currently the only mode that works
-        
-        vbl1(j) = Screen('Flip', win);
-        
-        PsychPortAudio('Start', pahandle, 1, vbl1(j)+sugLat+SOA_Tdel);
-        if visual.vis_stim(j)
-            for k = 1:preVflips
-                Screen('Flip', win); % better to have timing?
-            end
-            for i = 1:movieDurFrames
-                [kDown, dummy, kCode] = KbCheck;
-                if kDown
-                    disp('Keystroke recognized')
-                    if kCode(escapeKey)
-                        disp('ESC key recognized: aborting session...')
-                        %stop_it(pahandle, status_handles);
-                        exit_flag = 1;
-                        %return
-                        break
+            
+        elseif visual.useProceduralTex
+            PsychPortAudio('Start', pahandle);
+            vbl = Screen('Flip', win);
+            if visual.vis_stim(j)
+                for i = 1:movieDurFrames
+                    
+                    if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
+                        Screen('FillRect', win, white, syncFlashDims);
+                    end
+                    
+                    Screen('DrawTexture', win, texHandle, [], [], visual.angle, ...
+                        [], [], [], [], visual.rotateMode, [PTparams{:}]);
+                    %vbl = Screen('Flip', win, (vbl+0.5*ifi));
+                    vbl = Screen('Flip', win);
+                    if visual.updatePhase
+                        PTparams{1} = PTparams{1} + phase_inc;
                     end
                 end
-                
-                if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
-                    Screen('FillRect', win, white, syncFlashDims);
-                end
-                Screen('FillRect', win, flashLums(i), flashRect);
-                if i == 1
-                    vbl2(j) = Screen('Flip', win); % for debug only
-                else
-                    Screen('Flip', win);
-                end
-                
             end
-        end
-    elseif visual.noVisual
-        PsychPortAudio('Start', pahandle);
-    end
-    
-    
-    
-    Screen('FillRect', win, restCol);
-    Screen('Flip', win);
-    
-    if exit_flag
-        break
-    end
-    
-    pastatus = PsychPortAudio('GetStatus', pahandle);
-    req_st_time = pastatus.RequestedStartTime;
-    act_st_time = pastatus.StartTime;
-    % expect_end_time = pastatus.EstimatedStopTime;
-
-    %fprintf('\nPA status is %i\n', pastatus.Active)
-    while pastatus.Active
-        pastatus = PsychPortAudio('GetStatus', pahandle);
-        [kDown, dummy, kCode] = KbCheck;
-        if kDown
-            disp('Keystroke recognized')
-            if kCode(escapeKey)
-                disp('ESC key recognized: aborting session...')
-                %stop_it(pahandle, status_handles);
-                exit_flag = 1;
-                %return
-                break
-            end
-        end
-    end
-    
-    if exit_flag 
-        break
-    end
-
-    ISI_tic = GetSecs;
-    
-    trial_st_time(j) = vbl1(j)+sugLat+SOA_Tdel; % this is the time the first sample hits the audio card
-    
-    if params.send_messages
-        if strcmp(char(audio.genFunc), 'genSinTone')
-            zeroMQwrapper('Send',tcp_handle ,sprintf('TrialEnd %.0f Hz', audio.freq(j)));
-        else
-            zeroMQwrapper('Send',tcp_handle ,'TrialEnd');
-        end
-    end
-    
-    disp(['Scheduled aud start was ' num2str(req_st_time)]);
-    disp(['Actual start was ' num2str(act_st_time)]);
-    % disp(['Expected length was ' num2str(expect_end_time-act_st_time)]);
-    
-    if lpind ~= params.cycles
-        lpind = lpind +1; % update ind
-        
-        % replace stimulus
-        buffhandle = genAudioOnline(pahandle, audio, params, lpind);
-        PsychPortAudio('FillBuffer', pahandle, buffhandle);
-        [SOA_flips SOA_Tdel] = calcVdelay(params.SOA(lpind), params.stimStart(lpind), padLen, ifi);
-        preVflips = sugLat_flips + SOA_flips;
-        
-        % publish another message
-        if params.pub_messages
-            if multipart_msg
-                bytes_sent = zeros(1,nr_msgs);
-                for k = 1:nr_msgs % the number of split messages to send
-                    if k == nr_msgs
-                        bytes_sent(k) = zmq_send(pub_socket, uint8(msg_split{k}));
+            
+            
+        elseif visual.useFlashMode % currently the only mode that works
+            
+            vbl1(j) = Screen('Flip', win);
+            
+            PsychPortAudio('Start', pahandle, 1, vbl1(j)+sugLat+SOA_Tdel);
+            if visual.vis_stim(j)
+                for k = 1:preVflips
+                    Screen('Flip', win); % better to have timing?
+                end
+                for i = 1:movieDurFrames
+                    [kDown, dummy, kCode] = KbCheck;
+                    if kDown
+                        disp('Keystroke recognized')
+                        if kCode(escapeKey)
+                            disp('ESC key recognized: aborting session...')
+                            %stop_it(pahandle, status_handles);
+                            exit_flag = 1;
+                            %return
+                            break
+                        end
+                    end
+                    
+                    if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
+                        Screen('FillRect', win, white, syncFlashDims);
+                    end
+                    Screen('FillRect', win, flashLums(i), flashRect);
+                    if i == 1
+                        vbl2(j) = Screen('Flip', win); % for debug only
                     else
-                        bytes_sent(k) = zmq_send(pub_socket, uint8(msg_split{k}), 'ZMQ_SNDMORE');
+                        Screen('Flip', win);
                     end
+                    
                 end
-                publ_bytes(lpind) = sum(bytes_sent);
-                
+            end
+        elseif visual.noVisual
+            PsychPortAudio('Start', pahandle);
+        end
+        
+        
+        
+        Screen('FillRect', win, restCol);
+        Screen('Flip', win);
+        
+        if exit_flag
+            break
+        end
+        
+        pastatus = PsychPortAudio('GetStatus', pahandle);
+        req_st_time = pastatus.RequestedStartTime;
+        act_st_time = pastatus.StartTime;
+        % expect_end_time = pastatus.EstimatedStopTime;
+        
+        %fprintf('\nPA status is %i\n', pastatus.Active)
+        while pastatus.Active
+            pastatus = PsychPortAudio('GetStatus', pahandle);
+            [kDown, dummy, kCode] = KbCheck;
+            if kDown
+                disp('Keystroke recognized')
+                if kCode(escapeKey)
+                    disp('ESC key recognized: aborting session...')
+                    %stop_it(pahandle, status_handles);
+                    exit_flag = 1;
+                    %return
+                    break
+                end
+            end
+        end
+        
+        if exit_flag
+            break
+        end
+        
+        ISI_tic = GetSecs;
+        
+        trial_st_time(j) = vbl1(j)+sugLat+SOA_Tdel; % this is the time the first sample hits the audio card
+        
+        if params.send_messages
+            if strcmp(char(audio.genFunc), 'genSinTone')
+                zeroMQwrapper('Send',tcp_handle ,sprintf('TrialEnd %.0f Hz', audio.freq(j)));
             else
-                publ_bytes(lpind) = zmq_send(pub_socket, uint8(seq_msg));
+                zeroMQwrapper('Send',tcp_handle ,'TrialEnd');
             end
+        end
+        
+        disp(['Scheduled aud start was ' num2str(req_st_time)]);
+        disp(['Actual start was ' num2str(act_st_time)]);
+        % disp(['Expected length was ' num2str(expect_end_time-act_st_time)]);
+        
+        if lpind ~= params.cycles
+            lpind = lpind +1; % update ind
             
-            if params.loop_mode
-                for m = 1:tr_msgs_ct % number of trial messages to send
-                    zmq_send(pub_socket, uint8(sprintf('TRIAL %s %d', params.var_list{m}, params.stim_vals(lpind,m))));
+            % replace stimulus
+            buffhandle = genAudioOnline(pahandle, audio, params, lpind);
+            PsychPortAudio('FillBuffer', pahandle, buffhandle);
+            [SOA_flips SOA_Tdel] = calcVdelay(params.SOA(lpind), params.stimStart(lpind), padLen, ifi);
+            preVflips = sugLat_flips + SOA_flips;
+            
+            % publish another message
+            if params.pub_messages
+                if multipart_msg
+                    bytes_sent = zeros(1,nr_msgs);
+                    for k = 1:nr_msgs % the number of split messages to send
+                        if k == nr_msgs
+                            bytes_sent(k) = zmq_send(pub_socket, uint8(msg_split{k}));
+                        else
+                            bytes_sent(k) = zmq_send(pub_socket, uint8(msg_split{k}), 'ZMQ_SNDMORE');
+                        end
+                    end
+                    publ_bytes(lpind) = sum(bytes_sent);
+                    
+                else
+                    publ_bytes(lpind) = zmq_send(pub_socket, uint8(seq_msg));
                 end
-                zmq_send(pub_socket, uint8(sprintf('TRIAL ind %d', lpind)));
+                
+                if params.loop_mode
+                    for m = 1:tr_msgs_ct % number of trial messages to send
+                        zmq_send(pub_socket, uint8(sprintf('TRIAL %s %d', params.var_list{m}, params.stim_vals(lpind,m))));
+                    end
+                    zmq_send(pub_socket, uint8(sprintf('TRIAL ind %d', lpind)));
+                end
+                
+                disp('Sent trial info over ZMQ publish');
+                fprintf('%d bytes sent\n', publ_bytes(lpind));
             end
-            
-            disp('Sent trial info over ZMQ publish');
-            fprintf('%d bytes sent\n', publ_bytes(lpind));
-        end
-        % no ISI wait on the last trial
-        currISI_s = params.ISI(j)/1e3;
-        ISI_toc = GetSecs;
-        while currISI_s > ISI_toc - ISI_tic
+            % no ISI wait on the last trial
+            currISI_s = params.ISI(j)/1e3;
             ISI_toc = GetSecs;
+            while currISI_s > ISI_toc - ISI_tic
+                ISI_toc = GetSecs;
+            end
+            t4 = GetSecs;
+            disp(['ISI time elapsed = ' num2str(t4-ISI_tic, 10)]);
         end
-        t4 = GetSecs;
-        disp(['ISI time elapsed = ' num2str(t4-ISI_tic, 10)]);
+        disp(['Trial length actual = ' num2str(ISI_tic-act_st_time)]);
+        
     end
-    disp(['Trial length actual = ' num2str(ISI_tic-act_st_time)]);
-    
 end
 
 if params.trigger_control
