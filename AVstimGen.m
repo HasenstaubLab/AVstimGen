@@ -509,8 +509,14 @@ switch vis_select
     case 'Raindropper'
         visual.stimMode = 'RD';
         visual.noVisual = 0; 
+        visual.useMovie = 1; 
+        visual.useFlashMode = 0; 
+        visual.noVisual = 0; 
     case 'Load movie'
         visual.stimMode = 'LM';
+        visual.noVisual = 0; 
+        visual.useMovie = 1; 
+        visual.useFlashMode = 0;
         visual.noVisual = 0; 
     case 'No visual'
         visual.stimMode = 'NV';

@@ -129,7 +129,7 @@ padLen = 10; % pad before/after the trial: hard-coded for now, change later
 
 switch visual.stimMode;
     case 'LM' % MOVIE
-        movieFrameIndices=mod(0:(movieDurationFrames-1), numFrames) + 1;
+        %movieFrameIndices=mod(0:(movieDurationFrames-1), numFrames) + 1;
     case 'DG' % DRIFTING GRATINGS
         texHandle = genGratings(win, visual.width, visual.height);
         PTparams = {phase visual.frequency_pixel visual.contrast 0};
@@ -140,6 +140,9 @@ switch visual.stimMode;
         %
         PTparams = {};
     case 'RD' % RAINDROPPER
+        moviedata = generateNoise_contrast(.05,10,0,0.5,visual.dur/1e3,visual.dur/1e3,fR); 
+        rdRect = [1 1 visual.width visual.height];
+        rdRect = CenterRectOnPoint(rdRect, round(win_width/2), round(win_height/2));
         %
     case 'FL' % FLASHES
         flashRect = [1 1 visual.width visual.height];
@@ -294,27 +297,50 @@ if ~exit_flag
         % three types of movie production: use premade movie (visual.useMovie)
         % use procedural textures (visual.useProceduralTex)
         % use flashes (visual.useFlashMode)
-        
+
         if visual.useMovie
+            % TEMP RJM
+            %moviename = 'C:\Users\Ryan\Documents\MATLAB\Noise movies\RainDropperMovShort.avi';
+            % END TEMP
+            %movie = Screen('OpenMovie', win, moviename);
+            
+            %Screen('PlayMovie', movie, 1, 1);
             vbl = Screen('Flip', win);
-            PsychPortAudio('Start', pahandle);
-            % movie = Screen('OpenMovie', win, [%%%REPLACE W MOVIE FILE]);
-            %end
+            PsychPortAudio('Start', pahandle, 1, vbl1(j)+sugLat+SOA_Tdel);
+            
             if visual.vis_stim(j)
+               % t1 = GetSecs; 
                 for i=1:movieDurFrames
+                    [kDown, dummy, kCode] = KbCheck;
+                    if kDown
+                        disp('Keystroke recognized')
+                        if kCode(escapeKey)
+                            disp('ESC key recognized: aborting session...')
+                            %stop_it(pahandle, status_handles);
+                            exit_flag = 1;
+                            %return
+                            break
+                        end
+                    end
+                    
+                    % tex = Screen('GetMovieImage', win, movie);
+                    tex = Screen('MakeTexture', win, moviedata(:,:,i));
                     if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
                         Screen('FillRect', win, white, syncFlashDims);
                     end
-                    
                     % Draw image:
-                    Screen('DrawTexture', win, tex(movieFrameIndices(i)));
+                    %Screen('DrawTexture', win, tex(movieFrameIndices(i)));
+                    Screen('DrawTexture', win, tex, [], rdRect);
                     vbl = Screen('Flip', win, (vbl+0.5*ifi));
                 end
+%                 t2 = GetSecs; 
+%                 fprintf('\nTook %f secs', t2-t1); 
             end
             
         elseif visual.useProceduralTex
-            PsychPortAudio('Start', pahandle);
-            vbl = Screen('Flip', win);
+            % PsychPortAudio('Start', pahandle);
+            vbl1(j) = Screen('Flip', win);
+            PsychPortAudio('Start', pahandle, 1, vbl1(j)+sugLat+SOA_Tdel);
             if visual.vis_stim(j)
                 for i = 1:movieDurFrames
                     
@@ -332,11 +358,9 @@ if ~exit_flag
                 end
             end
             
-            
         elseif visual.useFlashMode % currently the only mode that works
             
             vbl1(j) = Screen('Flip', win);
-            
             PsychPortAudio('Start', pahandle, 1, vbl1(j)+sugLat+SOA_Tdel);
             if visual.vis_stim(j)
                 for k = 1:preVflips
@@ -358,6 +382,7 @@ if ~exit_flag
                     if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
                         Screen('FillRect', win, white, syncFlashDims);
                     end
+                    
                     Screen('FillRect', win, flashLums(i), flashRect);
                     if i == 1
                         vbl2(j) = Screen('Flip', win); % for debug only
@@ -367,6 +392,7 @@ if ~exit_flag
                     
                 end
             end
+            
         elseif visual.noVisual
             PsychPortAudio('Start', pahandle);
         end
@@ -417,18 +443,20 @@ if ~exit_flag
             end
         end
         
-        disp(['Scheduled aud start was ' num2str(req_st_time)]);
-        disp(['Actual start was ' num2str(act_st_time)]);
+        %disp(['Scheduled aud start was ' num2str(req_st_time)]);
+       % disp(['Actual start was ' num2str(act_st_time)]);
         % disp(['Expected length was ' num2str(expect_end_time-act_st_time)]);
         
         if lpind ~= params.cycles
             lpind = lpind +1; % update ind
             
-            % replace stimulus
+            % replace auditory stimulus
             buffhandle = genAudioOnline(pahandle, audio, params, lpind);
             PsychPortAudio('FillBuffer', pahandle, buffhandle);
             [SOA_flips SOA_Tdel] = calcVdelay(params.SOA(lpind), params.stimStart(lpind), padLen, ifi);
             preVflips = sugLat_flips + SOA_flips;
+            
+            % replace visual stimulus 
             
             % publish another message
             if params.pub_messages
