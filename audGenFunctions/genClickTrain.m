@@ -1,4 +1,4 @@
-function y = genClickTrain(dur, freq_dummy, Fs, click_params)
+function y = genClickTrain(ind_dummy, dur, freq_dummy, Fs, click_params)
 click_freq = click_params.click_freq; 
 click_dur = click_params.click_dur;
 ramp_on_dur = click_params.ramp_on_dur; 

@@ -1,13 +1,12 @@
 function audCh = padAudio(yIn, stimOnset, SOA, trialLen, Fs) 
 % pad audio data to meet requested trial timing 
-
 if yIn == 0 | isempty(yIn)
     audCh = zeros(1,trialLen);
 else
     ms = round(Fs/1000);
     pad = zeros(1, ms*10); % pad 10ms
     stimOnDelay = zeros(1,ms*stimOnset);
-    
+    SOA = round(SOA); 
     if SOA> 0
         SOA_aud = zeros(1,ms*SOA);
     else

@@ -1,5 +1,5 @@
 
-function y = genSinTone(dur, freq, Fs, ~) 
+function y = genSinTone(ind_dummy, dur, freq, Fs, ~) 
 
 rampSize = 6e-3; % ramp size of 3ms 
 

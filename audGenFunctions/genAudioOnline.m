@@ -5,7 +5,7 @@ disp(['TRIAL ' num2str(ind')]);
 disp('********************************************************************')
 t1 = GetSecs;
 
-audio_data = feval(audio.genFunc, audio.dur(ind), audio.freq(ind), audio.Fs, audio.params_other);
+audio_data = feval(audio.genFunc, ind, audio.dur(ind), audio.freq(ind), audio.Fs, audio.params_other);
 
 %if ~strcmp(audio.genFunc, 'genNoAudio')
 % do things to audio
@@ -68,29 +68,35 @@ else
     aud_trial = 0; 
 end
 
-% add triggers
+% add triggers    
+
+if strcmp(char(audio.genFunc), 'retWavAudio')
+    trialLen_ms= round(length(audio_data)/(audio.Fs/1e3)+100);
+else
+    trialLen_ms = params.trialLen;
+end
 
 if params.allTriggersOneCh
     if ~isempty(params.lightTest)
-        triggerCh = addLightTestTrigs(params.lightTest, params.trialLen, audio.Fs);
-        trialLen = length(triggerCh); 
-        audCh = zeros(1,trialLen); 
+        triggerCh = addLightTestTrigs(params.lightTest, trialLen_ms, audio.Fs);
+        trialLen = length(triggerCh);
+        audCh = zeros(1,trialLen);
     else
-        triggerCh = addTriggersOneCh(audio.dur(ind), params.trialLen, params.stimStart(ind), params.SOA(ind), aud_trial, params.lightStart(ind),...
+        triggerCh = addTriggersOneCh(audio.dur(ind), trialLen_ms, params.stimStart(ind), params.SOA(ind), aud_trial, params.lightStart(ind),...
             params.lightStop(ind), params.light_trial(ind), audio.Fs);
         trialLen = length(triggerCh);
         audCh = padAudio(audio_data, params.stimStart(ind), params.SOA(ind), trialLen, audio.Fs);
     end
+    
     audio_allChs = assignAudChs(audio.numChans, params.chSelect, audCh, [], triggerCh, []);
 else
-    trTrCh = addTrialTriggers(params.trialLen, audio.Fs); % calculate trial triggers
+    trTrCh = addTrialTriggers(trialLen_ms, audio.Fs); % calculate trial triggers
     %trTrCh = addTrialTriggers2(params.trialLen, audio.Fs);
     trialLen = length(trTrCh);
     [audCh audTrCh] = addAudioTriggers(audio_data, params.stimStart(ind), params.SOA(ind), trialLen, audio.Fs); % calculate audio triggers
     liTrCh = addLightTriggers(params.lightStart(ind), params.lightStop(ind), trialLen, audio.Fs, params.light_trial(ind)); % calculate light triggers
     audio_allChs = assignAudChs(audio.numChans, params.chSelect, audCh, audTrCh, trTrCh, liTrCh);
 end
-
 
 % Defaults:
 % ch 1: audio
@@ -101,11 +107,12 @@ end
 % audio_allChs = [audCh; audTrCh; trTrCh; liTrCh];
 
 
+
 t2 = GetSecs; 
 
 buffhandle = PsychPortAudio('CreateBuffer', pahandle, audio_allChs); % IS THIS THE BEST WAY?
 
-disp(['Call to genAudioOnline took ' num2str(t2-t1)]); 
+fprintf('Call to genAudioOnline took %f s\n', t2-t1); 
 disp(['Trial length ' num2str(trialLen/audio.Fs, 10)]); 
 
 

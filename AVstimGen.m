@@ -7,7 +7,7 @@ function varargout = AVstimGen(varargin)
 % 
 % Ryan Morrill, 2014 
 
-% Last Modified by GUIDE v2.5 23-Mar-2015 18:13:19
+% Last Modified by GUIDE v2.5 29-Jun-2015 14:32:15
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -39,6 +39,8 @@ function AVstimGen_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % Choose default command line output for AVstimGen
 handles.output = hObject;
+
+% set(gcf, 'CloseRequestFcn', @cleanUpFun); 
 
 % because there seems to be a weird bug: 
 % figHandles = get(0, 'Children'); 
@@ -114,6 +116,15 @@ handles.lastexpno = lastexpno;
 
 handles.send_messages = 0;
 handles.pub_messages = 0; 
+handles.pub_light_level = 0; 
+
+spk_cal_dir = '/Users/hlab/Documents/MATLAB/AVstimGen/SpeakerCalFiles'; %default location 
+spk_cal_file = get(handles.loaded_spk_cal_txt, 'String'); 
+handles.spk_cal_file = fullfile(spk_cal_dir, spk_cal_file);
+if exist(handles.spk_cal_file, 'file') == 0 
+    warndlg(sprintf('No %s found in %s, the default spk cal file directory. The speaker calibration will not load', spk_cal_file, spk_cal_dir), 'Incorrect speaker cal file'); 
+end
+
 
 handles.lightTest = ''; 
 
@@ -159,6 +170,10 @@ if ~isfield(handles, 'pub_socket');
     handles.pub_socket = [];
 end
 
+if ~isfield(handles, 'light_pub_socket');
+    handles.light_pub_socket = []; 
+end
+
 if ~isfield(handles, 'spk_cal_file') || isempty(handles.spk_cal_file)
     spk_msg_quest_ans = questdlg('Warning: no speaker calibration file selected. Proceed?', 'Speaker cal warning', 'Yes', 'No', 'Yes');
     drawnow; pause(0.05);
@@ -185,7 +200,21 @@ else
 end
 
 cyc = str2double(get(handles.cycles_edit, 'String'));
+
+% audio.aud_only_BL = get(handles.aud_BL_check, 'Value'); 
+% visual.vis_only_BL = get(handles.vis_BL_check, 'Value'); 
+% 
+% if audio.aud_only_BL  
+%     vars_loop = [vars_loop 'aud_only_BL']; 
+%     vals_loop = [vals_loop]; 
+% end
+% 
+% if visual.vis_only_BL
+%     vars_loop = [vars_loop 'vis_only_BL']; 
+% end
+
 num_combs = size(vals_loop,1); 
+
 if ~isempty(vars_loop)
     if cyc < num_combs
         cyc = char(inputdlg(['Input loop values require min ' num2str(size(vals_loop,1))...
@@ -265,6 +294,9 @@ end
 % audio_freq 
 % audio_atten 
 % light 
+% light_on
+% light_off 
+% light_level 
 % vis_stim
 
 loop_SOA = strmatch('SOA', vars_loop, 'exact');
@@ -276,12 +308,16 @@ loop_audio_atten = strmatch('audio_atten', vars_loop, 'exact');
 loop_light_on = strmatch('light_on', vars_loop, 'exact'); 
 loop_light_off = strmatch('light_off', vars_loop, 'exact'); 
 loop_light = strmatch('light', vars_loop, 'exact'); 
-loop_vis_stim = strmatch('vis_stim', vars_loop, 'exact'); 
+loop_vis_stim = strmatch('vis_stim', vars_loop, 'exact');
+loop_light_level = strmatch('light_level', vars_loop, 'exact'); 
 % loop_audo_click_freq = strmatch('audio_click_freq', vars_loop);
 
 % PARAMS
 params.expt_name = get(handles.exp_name_edit, 'String'); 
 params.cycles = cyc; 
+
+params.trialLen  = handles.trialLen; 
+
 % two ways to get variable ISIs: loop box and checkbox for range ISI
 if ~isempty(loop_ISI)
     params.ISI = vals_loop(:,loop_ISI);
@@ -293,13 +329,17 @@ else
     params.ISI = repmat(str2double(get(handles.ISI_edit, 'String')), 1, cyc); 
 end
 
+if ~isempty(loop_light_level)
+    params.light_level = vals_loop(:,loop_light_level); 
+else
+    params.light_level = repmat(str2double(get(handles.light_level_edit, 'String')), 1, cyc); 
+end
+
 if ~isempty(loop_SOA)
     params.SOA = vals_loop(:,loop_SOA);
 else
     params.SOA = repmat(handles.SOA,1,cyc);
 end
-
-params.trialLen  = handles.trialLen;
 
 if ~isempty(loop_stim_start) 
     params.stimStart = vals_loop(:,loop_stim_start); 
@@ -412,20 +452,59 @@ switch aud_select
     case 'Tone'
         audio.genFunc = @genSinTone;
         audio.params_other = [];
-    case 'Load wave'% WRONG
-        filename = uigetfile();
-        try
-            [y, wavFs] = wavread(filename);
-            disp(['Opened file ' filename]);
-            handles.aud_y = y(1,:);
-            if wavFs ~= handles.Fs
-                errordlg(sprintf('Sampling rate from wave file is %i Hz but system sampling rate is set to %i Hz', wavFs, handles.Fs), 'Inconsistent Fs');
-            end
-        catch me
-            disp(me);
-            error('ERROR: AVstimGen could not open your file');
+    case 'Load wave'
+        audio.genFunc = @retWavAudio;
+        audio.params_other = handles.params_other;
+        if ~iscell(audio.params_other)
+            error('Check playlist - something wrong');
+            return
         end
-        audio.params_other = [];
+        
+        pl_len = length(audio.params_other);
+        if pl_len < cyc
+            m = mod(cyc, pl_len);
+            numreps = floor(cyc/pl_len);
+            audio.params_other = repmat(audio.params_other, 1, numreps);
+            audio.params_other = [audio.params_other audio.params_other{1:m}]; 
+        end
+        
+        if get(handles.random_loops_check, 'Value')
+            disp('Loop randomly box checked: randomizing wav playlist');
+            randplaylist_idx = randperm(length(audio.params_other));
+            audio.params_other = audio.params_other(randplaylist_idx);
+        end
+        
+        disp('Getting lengths of playlist files');
+        for k = 1:cyc
+            if ~isempty(strfind(audio.params_other{k}, '.wav'))
+                info = audioinfo(audio.parms_other{k}); 
+                audio.dur(k) = info.Duration*1000; % in ms   
+            elseif ~isempty(strfind(audio.params_other{k}, '.mat'))
+                matinfo = matfile(audio.params_other{k}); 
+                info = whos(matinfo, 'y'); 
+                if isempty(info)
+                    errordlg(sprintf('File %s does not contain variable ''y'', check that this is a mat file for sound playback', audio.params_other{k}), 'No audio found'); 
+                    return
+                else
+                audio.dur(k) = (info.size(1)/audio.Fs)*1e3; 
+                end
+            end
+        end
+        
+        
+        %         filename = uigetfile();
+        %         try
+        %             [y, wavFs] = wavread(filename);
+%             disp(['Opened file ' filename]);
+%             handles.aud_y = y(1,:);
+%             if wavFs ~= handles.Fs
+%                 errordlg(sprintf('Sampling rate from wave file is %i Hz but system sampling rate is set to %i Hz', wavFs, handles.Fs), 'Inconsistent Fs');
+%             end
+%         catch me
+%             disp(me);
+%             error('ERROR: AVstimGen could not open your file');
+%         end
+%         audio.params_other = [];
     case 'Clicks'
         audio.params_other.click_freq = str2double(get(handles.clicks_freq_edit, 'String'));
         audio.params_other.click_dur = 4; %4ms dur hard-coded
@@ -540,22 +619,39 @@ end
 % send messages?
 params.send_messages = handles.send_messages;
 params.pub_messages = handles.pub_messages;
+params.pub_light_level = handles.pub_light_level; 
 
 dir_old = cd;
 %cd(AVstimDir)
-session_save.dir = [handles.AVstimDir 'StimData']; 
+session_save.local_dir = [handles.AVstimDir 'StimData']; 
+session_save.server_dir = 'afp://holding.cin.ucsf.edu/Users/ryan/exptStimDataBackup';
 
-if ~isdir(session_save.dir)
-    mkdir(session_save.dir); 
+if ~isdir(session_save.local_dir)
+    mkdir(session_save.local_dir); 
 end
 
-cd(session_save.dir); 
-session_save.dir = [handles.AVstimDir 'StimData']; 
-params.date_str =  datestr(now, 'dd_mmmyyyy_HH_MM_SS');
-session_save.str=['stim_' params.date_str '.mat'];
-save(session_save.str, 'audio', 'visual', 'params') 
+cd(session_save.local_dir); 
+session_save.local_dir = [handles.AVstimDir 'StimData']; 
+%params.date_str =  datestr(now, 'dd_mmmyyyy_HH_MM_SS');
 
-cd(dir_old);
+params.date_str = datestr(now, 'yyyy-mm-dd_HH-MM-SS'); 
+session_save.str=['stimInfoAll_' params.date_str '.mat'];
+save(session_save.str, 'audio', 'visual', 'params') 
+fprintf('Saving stim info locally to %s\n', fullfile(session_save.local_dir, session_save.str));
+
+% try
+%     cd(session_save.server_dir)
+%     save(session_save.str, 'audio', 'visual', 'params')
+%     fprintf('Saved stim info to server at %s\n', fullfile(session_save.server_dir, session_save.str));
+%     cd(dir_old);
+% catch
+%     server_quest_ans = questdlg(sprintf('Warning: unable to save stimulus information to server location %s. Experiment information should still be saved locally in %s. Proceed?',...
+%         session_save.server_dir, fullfile(session_save.local_dir, session_save.str)), 'Server stim info warning', 'Yes', 'No', 'Yes');
+%     if strcmp(server_quest_ans, 'No')
+%         cd(dir_old);
+%         return
+%     end
+% end
    
 set(handles.status_text, 'String', 'Playing... press and hold ESC key to terminate session');
 pause(0.2);
@@ -565,8 +661,7 @@ visual.syncFlashDur = 30/1000; %30ms
 visual.syncFlashDims = [0 0 100 100];
 % visual.flashFreq = 5;
 
-
-AVengine(audio, visual, params, handles.status_text, handles.tcp_handle, handles.pub_socket, session_save);
+AVengine(audio, visual, params, handles.status_text, handles.tcp_handle, handles.pub_socket, handles.light_pub_socket, session_save);
 
 
 
@@ -1343,7 +1438,6 @@ end
 plotTrialStruct(handles);
 guidata(hObject, handles);
 
-
 % --- Executes when selected object is changed in aud_stim_panel.
 function aud_stim_panel_SelectionChangeFcn(hObject, eventdata, handles)
 % hObject    handle to the selected object in aud_stim_panel
@@ -1352,10 +1446,15 @@ function aud_stim_panel_SelectionChangeFcn(hObject, eventdata, handles)
 %	OldValue: handle of the previously selected object or empty if none was selected
 %	NewValue: handle of the currently selected object
 % handles    structure with handles and user data (see GUIDATA)
-handles.aud = ~strcmp(get(get(handles.aud_stim_panel, 'SelectedObject'), 'String'), 'No auditory');
+fcnselect = get(get(handles.aud_stim_panel, 'SelectedObject'), 'String'); 
+handles.aud = ~strcmp(fcnselect, 'No auditory');
+if strcmp(fcnselect, 'Load wave')
+    handles.params_other = uipickfiles(); 
+    set(handles.stim_start_edit, 'String', num2str(50)); % set automatic 50ms delay 
+    handles.stimStart = 50; 
+end
 plotTrialStruct(handles);
 guidata(hObject, handles);
-
 
 
 % --- Executes on selection change in ch1_popup.
@@ -2249,3 +2348,121 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
+
+function light_level_edit_Callback(hObject, eventdata, handles)
+% hObject    handle to light_level_edit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of light_level_edit as text
+%        str2double(get(hObject,'String')) returns contents of light_level_edit as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function light_level_edit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to light_level_edit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function light_port_edit_Callback(hObject, eventdata, handles)
+% hObject    handle to light_port_edit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of light_port_edit as text
+%        str2double(get(hObject,'String')) returns contents of light_port_edit as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function light_port_edit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to light_port_edit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in light_port_push.
+function light_port_push_Callback(hObject, eventdata, handles)
+% hObject    handle to light_port_push (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+if ~handles.pub_light_level
+    try
+        portno = str2num(get(handles.light_port_edit, 'String'));
+        handles.light_pub_address = sprintf('tcp://*:%d', portno);
+        disp('Connecting');
+        disp('Establishing new context');
+        handles.light_ctx = zmq_ctx_new();
+        %disp(ctx);
+        disp('Creating new socket');
+        handles.light_pub_socket = zmq_socket(handles.light_ctx, 'ZMQ_PUB');
+        %disp(socket);
+        WaitSecs(0.1);
+        disp(sprintf('Binding socket to IP %s',handles.light_pub_address));
+        bind_success= zmq_bind(handles.light_pub_socket, handles.light_pub_address);
+        %disp(bind_success);
+        WaitSecs(0.1);
+        zmq_setsockopt(handles.light_pub_socket, 'ZMQ_MAXMSGSIZE', -1);
+    catch me
+        errordlg(['ZMQ connection error: ' me.message]);
+        disp('Connection attempt failed')
+        return
+    end
+    handles.pub_light_level = 1;
+    disp(['Will publish messages to ' handles.light_pub_address]);
+    set(hObject, 'String', 'Disconnect','ForegroundColor', [1 0 0]);
+else
+    handles.pub_light_level = disconnectZMQport(handles.light_ctx, handles.light_pub_socket, handles.light_pub_address);
+    handles.light_pub_socket = []; 
+    %handles.pub_light_level = 0; 
+    set(hObject, 'String', 'Connect', 'ForegroundColor', [0 1 0]);
+end
+ guidata(hObject, handles);
+
+% --- Executes when user attempts to close figure1.
+function figure1_CloseRequestFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: delete(hObject) closes the figure
+delete(hObject);
+
+
+% --- Executes during object deletion, before destroying properties.
+function text2_DeleteFcn(hObject, eventdata, handles)
+% hObject    handle to text2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+
+% --- Executes on button press in aud_BL_check.
+function aud_BL_check_Callback(hObject, eventdata, handles)
+% hObject    handle to aud_BL_check (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of aud_BL_check
+
+
+% --- Executes on button press in vis_BL_check.
+function vis_BL_check_Callback(hObject, eventdata, handles)
+% hObject    handle to vis_BL_check (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of vis_BL_check

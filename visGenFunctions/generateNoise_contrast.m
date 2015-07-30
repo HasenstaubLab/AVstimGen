@@ -32,7 +32,7 @@ alpha=-1;  %%% exponent in frequency-amplitude power law, 0 gives a flat spectru
 offset=3;   %%% this defines corner frequency in power law
 
 %%% derived parameters
-nframes = framerate*duration;
+nframes = round(framerate*duration);
 contrast_period = period*framerate;
 screenWidthDeg = 2*atan(0.5*screenWidthCm/screenDistanceCm)*180/pi;
 degperpix = (screenWidthDeg/screenWidthPix)*imageMag;

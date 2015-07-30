@@ -1,7 +1,7 @@
 % y = genWhiteNoise(dur, Fs)
 % dur: duration in ms 
 
-function y = genWhiteNoise(dur, ~, Fs, otherParams)
+function y = genWhiteNoise(ind_dummy, dur, ~, Fs, otherParams)
 
 dur_s = dur/1000; 
 

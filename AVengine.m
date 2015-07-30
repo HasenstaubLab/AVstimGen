@@ -1,11 +1,8 @@
-function AVengine(audio, visual, params, status_handles, tcp_handle, pub_socket, session_save)
+function AVengine(audio, visual, params, status_handles, tcp_handle, pub_socket, light_pub_socket, session_save)
 % AVengine(audio, visual, params)
 % audio/visual engine for AVStimGen player
 %
-
-% persistent msg_hdr_date
-%
-% disp(['MSG hdr date is ' msg_hdr_date])
+% light_pub_socket
 
 java.lang.Runtime.getRuntime.gc % java runtime garbage collection
 % any other ways to clean up memory before running?
@@ -140,7 +137,7 @@ switch visual.stimMode;
         %
         PTparams = {};
     case 'RD' % RAINDROPPER
-        moviedata = generateNoise_contrast(.05,10,0,0.5,visual.dur/1e3,visual.dur/1e3,fR); 
+        moviedata = generateNoise_contrast(.05,10,0,0.5,visual.dur/1e3,visual.dur/1e3,fR);
         rdRect = [1 1 visual.width visual.height];
         rdRect = CenterRectOnPoint(rdRect, round(win_width/2), round(win_height/2));
         %
@@ -182,6 +179,11 @@ vbl2 = zeros(1,params.cycles);
 lpind = 1; % for indexing function calls in big for loop
 exit_flag = 0; % for breaking out of big for loop
 
+% flag for audio_trial
+
+audioFlag = ~strcmp('genNoAudio', char(audio.genFunc));
+
+
 [SOA_flips SOA_Tdel] = calcVdelay(params.SOA(lpind), params.stimStart(lpind), padLen, ifi);
 preVflips = sugLat_flips + SOA_flips;
 
@@ -196,7 +198,7 @@ end
 trial_st_time = zeros(1,params.cycles);
 ref_GetSecs_time = GetSecs;
 now_time = now;
-msg_hdr_date = datestr(now_time, 'yy-mm-dd-HHMM');
+msg_hdr_date = params.date_str; %stim info and
 
 %msg_hdr_date_new = datestr(now_time, 'yy-mm-dd-HHMM');
 %
@@ -212,6 +214,11 @@ msg_hdr_date = datestr(now_time, 'yy-mm-dd-HHMM');
 %     msg_hdr_date = msg_hdr_date_new;
 % end
 
+% 1s wait time so that new recording folder can be made before experiment
+% message is sent:
+WaitSecs(1);
+
+
 msg_hdr = ['EXP ' msg_hdr_date ' '];
 
 if params.loop_mode
@@ -219,6 +226,7 @@ if params.loop_mode
 else
     seq_msg = [msg_hdr 'TrialType No Loops'];
 end
+
 
 if params.send_messages
     %disp('Sending trial sequence message');
@@ -255,16 +263,24 @@ if params.pub_messages % send the first message
     if params.loop_mode
         tr_msgs_ct = length(params.var_list);
         for m = 1:tr_msgs_ct % number of trial messages to send
-            zmq_send(pub_socket, uint8(sprintf('TRIAL %s %d', params.var_list{m}, params.stim_vals(1,m))));
+            zmq_send(pub_socket, uint8(sprintf('TR %d %s : %d', 1, params.var_list{m}, params.stim_vals(1,m))));
         end
-        zmq_send(pub_socket, uint8(sprintf('TRIAL ind %d', 1)));
+    end
+    if audioFlag
+        zmq_send(pub_socket, uint8(sprintf('TR %d audio_dur: %d', 1, audio.dur(1))));
     end
     
     disp('Sent trial info over ZMQ publish');
     fprintf('%d bytes sent\n', publ_bytes(1));
+    
 else
     publ_bytes = [];
 end
+
+if params.pub_light_level
+    zmq_send(light_pub_socket, uint8(num2str(params.light_level(1))));
+end
+
 
 if params.trigger_control
     % pause until playing finished
@@ -278,7 +294,7 @@ end
 buffhandle = genAudioOnline(pahandle, audio, params, lpind); % first call to genAudioOnline
 PsychPortAudio('FillBuffer', pahandle, buffhandle);
 
-[kDown, dummy, kCode] = KbCheck; % add in an early exit flag for quick abort 
+[kDown, dummy, kCode] = KbCheck; % add in an early exit flag for quick abort
 if kDown
     disp('Keystroke recognized')
     if kCode(escapeKey)
@@ -290,14 +306,16 @@ end
 
 if ~exit_flag
     for j = 1:params.cycles
-        %%%%% RJM 010915
-        % zeroMQwrapper('Send',tcp_handle ,'TrialStart 2');
-        %%%%
-        
+        if params.send_messages
+            zeroMQwrapper('Send',tcp_handle ,sprintf('TrialStart %d', j));
+        end
+        if params.pub_messages
+            zmq_send(pub_socket, uint8(sprintf('TR ind %d START', j)));
+        end
         % three types of movie production: use premade movie (visual.useMovie)
         % use procedural textures (visual.useProceduralTex)
         % use flashes (visual.useFlashMode)
-
+        
         if visual.useMovie
             % TEMP RJM
             %moviename = 'C:\Users\Ryan\Documents\MATLAB\Noise movies\RainDropperMovShort.avi';
@@ -309,7 +327,7 @@ if ~exit_flag
             PsychPortAudio('Start', pahandle, 1, vbl1(j)+sugLat+SOA_Tdel);
             
             if visual.vis_stim(j)
-               % t1 = GetSecs; 
+                % t1 = GetSecs;
                 for i=1:movieDurFrames
                     [kDown, dummy, kCode] = KbCheck;
                     if kDown
@@ -333,8 +351,8 @@ if ~exit_flag
                     Screen('DrawTexture', win, tex, [], rdRect);
                     vbl = Screen('Flip', win, (vbl+0.5*ifi));
                 end
-%                 t2 = GetSecs; 
-%                 fprintf('\nTook %f secs', t2-t1); 
+                %                 t2 = GetSecs;
+                %                 fprintf('\nTook %f secs', t2-t1);
             end
             
         elseif visual.useProceduralTex
@@ -433,18 +451,25 @@ if ~exit_flag
         
         ISI_tic = GetSecs;
         
+        
         trial_st_time(j) = vbl1(j)+sugLat+SOA_Tdel; % this is the time the first sample hits the audio card
         
+        if params.pub_messages
+            zmq_send(pub_socket, uint8(sprintf('TR ind %d END', j)));
+        end
+        
         if params.send_messages
-            if strcmp(char(audio.genFunc), 'genSinTone')
-                zeroMQwrapper('Send',tcp_handle ,sprintf('TrialEnd %.0f Hz', audio.freq(j)));
-            else
-                zeroMQwrapper('Send',tcp_handle ,'TrialEnd');
+            zeroMQwrapper('Send', tcp_handle, sprintf('audio_dur: %d', audio.dur(j)));
+            if params.loop_mode
+                for h = 1:length(params.var_list)
+                    zeroMQwrapper('Send', tcp_handle, sprintf('%s : %d', params.var_list{h}, params.stim_vals(j,h)));
+                end
             end
+            zeroMQwrapper('Send',tcp_handle ,sprintf('TrialEnd %d', j));
         end
         
         %disp(['Scheduled aud start was ' num2str(req_st_time)]);
-       % disp(['Actual start was ' num2str(act_st_time)]);
+        % disp(['Actual start was ' num2str(act_st_time)]);
         % disp(['Expected length was ' num2str(expect_end_time-act_st_time)]);
         
         if lpind ~= params.cycles
@@ -456,10 +481,16 @@ if ~exit_flag
             [SOA_flips SOA_Tdel] = calcVdelay(params.SOA(lpind), params.stimStart(lpind), padLen, ifi);
             preVflips = sugLat_flips + SOA_flips;
             
-            % replace visual stimulus 
+            % replace visual stimulus
+            
+            % send light levels
+            if params.pub_light_level
+                zmq_send(light_pub_socket, uint8(num2str(params.light_level(lpind))));
+            end
             
             % publish another message
             if params.pub_messages
+                
                 if multipart_msg
                     bytes_sent = zeros(1,nr_msgs);
                     for k = 1:nr_msgs % the number of split messages to send
@@ -470,16 +501,18 @@ if ~exit_flag
                         end
                     end
                     publ_bytes(lpind) = sum(bytes_sent);
-                    
                 else
                     publ_bytes(lpind) = zmq_send(pub_socket, uint8(seq_msg));
                 end
                 
                 if params.loop_mode
+                    tr_msgs_ct = length(params.var_list);
                     for m = 1:tr_msgs_ct % number of trial messages to send
-                        zmq_send(pub_socket, uint8(sprintf('TRIAL %s %d', params.var_list{m}, params.stim_vals(lpind,m))));
+                        zmq_send(pub_socket, uint8(sprintf('TR %d %s : %d', lpind, params.var_list{m}, params.stim_vals(lpind,m))));
                     end
-                    zmq_send(pub_socket, uint8(sprintf('TRIAL ind %d', lpind)));
+                end
+                if audioFlag
+                    zmq_send(pub_socket, uint8(sprintf('TR %d audio_dur: %d', lpind, audio.dur(lpind))));
                 end
                 
                 disp('Sent trial info over ZMQ publish');
@@ -516,7 +549,6 @@ stop_it(pahandle, status_handles);
 
 java.lang.Runtime.getRuntime.gc % java runtime garbage collection
 
-
 % code to clean things up
 Priority(0);
 Screen('Preference', 'Verbosity', oldlevel);
@@ -527,7 +559,7 @@ time_adj = now_time - ref_GetSecs_time/86400;
 times_real_num = time_adj + trial_st_time/86400;
 trial_start.times_real = str2num(datestr(times_real_num, 'HHMMSSFFF'))'; %format times
 
-save_full = fullfile(session_save.dir, session_save.str);
+save_full = fullfile(session_save.local_dir, session_save.str);
 
 if exist(save_full, 'file')
     delete(save_full)

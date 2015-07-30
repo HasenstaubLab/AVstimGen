@@ -21,9 +21,9 @@ ms = round(Fs/1000);
 pad = zeros(1,ms*10);
 
 short_trig_ht = 0.2; 
-tall_trig_ht = 0.6; 
-trig_len = 0.2; 
-iti_len = 0.2; 
+tall_trig_ht = short_trig_ht*2.2; 
+trig_len = .2; 
+iti_len = .2; 
 %pad_long = zeros(1,ms*2000); 
 
 short_trig = ones(1,round(ms*trig_len))*short_trig_ht; 
