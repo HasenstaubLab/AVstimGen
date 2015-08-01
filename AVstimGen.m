@@ -2457,6 +2457,15 @@ function aud_BL_check_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of aud_BL_check
+if get(hObject, 'Value')
+   fh = figure; 
+   handles.aud_BL_fh = fh; 
+else 
+    if isfield(handles, 'aud_BL_fh') && ishandle(handles.aud_BL_fh)
+        close(handles.aud_BL_fh);
+    end
+end
+
 
 
 % --- Executes on button press in vis_BL_check.
@@ -2466,3 +2475,66 @@ function vis_BL_check_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of vis_BL_check
+
+if get(hObject, 'Value')
+   fh = figure('Position', [100 500 250 300], 'Name', 'Visual baseline'); 
+   set(fh, 'menubar', 'none');
+   %keyboard
+   bg = uibuttongroup(fh,'Position', [0 0 1 1]); 
+   %%% radio buttons: 
+   uicontrol('Style', 'Text', 'Units', 'Normalized', 'Position',[0.4 0.85 0.5 0.1], 'String', 'Visual BL params:', 'FontSize', 12); 
+   handles.flash_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+       'Position', [0.02 0.8 0.3 0.08], 'String', 'Flash', 'FontSize', 12); 
+   handles.flash_pulses_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+       'Position', [0.02 0.7 0.5 0.08], 'String', 'Flash pulses', 'FontSize', 12); 
+   handles.gratings_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+       'Position', [0.02 0.6 0.5 0.08], 'String', 'Drifting gratings', 'FontSize', 12); 
+   handles.raindropper_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+       'Position', [0.02 0.5 0.5 0.08], 'String', 'Raindropper', 'FontSize', 12); 
+   handles.load_movie_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+       'Position', [0.02 0.4 0.5 0.08], 'String', 'Load movie', 'FontSize', 12); 
+   handles.no_visual_radio_BL  = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+       'Position', [0.02 0.3 0.5 0.08], 'String', 'No visual', 'FontSize', 12); 
+   %%%
+   handles.dur_vis_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+       'Position', [0.1 0.13 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.dur_vis_edit, 'String')); 
+   uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+       'Position', [0.1 0.23 0.3 0.06], 'String', 'Dur (ms)')
+   uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+       'Position', [0.02 0.02 0.3 0.06], 'String', 'Width')
+   uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+       'Position', [0.5 0.02 0.3 0.06], 'String', 'Height')
+   handles.vis_width_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+       'Position', [0.3 0.02 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.vis_width_edit, 'String')); 
+      handles.vis_height_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+       'Position', [0.7 0.02 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.vis_height_edit, 'String')); 
+   
+   handles.contrast_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+       'Position', [0.75 0.7 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.contrast_edit, 'String')); 
+   
+%    
+%    
+%    handles.vis_freq_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+%        'Position', [0.7 0.7 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.vis_freq_edit, 'String'));   
+%    handles.cycles_per_sec_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+%        'Position', [0.7 0.02 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.cycles_per_sec_edit, 'String')); 
+% %    handles.angle_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+% %        'Position', [0.7 0.02 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.angle_edit, 'String')); 
+% %    
+%    keyboard
+%    
+%    
+%    handles.vis_BL_fh = fh; 
+%    
+
+   
+else 
+    if isfield(handles, 'vis_BL_fh') && ishandle(handles.vis_BL_fh)
+        close(handles.vis_BL_fh);
+    end
+end
+guidata(hObject, handles); 
+
+    
+   
+    
