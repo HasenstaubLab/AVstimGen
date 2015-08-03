@@ -181,8 +181,16 @@ if ~isfield(handles, 'spk_cal_file') || isempty(handles.spk_cal_file)
         return
     end
 else
-    spk_cal = load(handles.spk_cal_file, 'b');
-    audio.spk_cal_filt = spk_cal.b;
+    if ~exist(handles.spk_cal_file, 'file')
+        spk_file_quest_ans = questdlg(sprintf('Warning: no speaker calibration file %s not found. Proceed with no speaker calibration file?', handles.spk_cal_file), 'Speaker cal warning', 'Yes', 'No', 'Yes');
+        drawnow; pause(0.05);
+        if strmatch(spk_file_quest_ans, 'No')
+            return
+        end
+    else
+        spk_cal = load(handles.spk_cal_file, 'b');
+        audio.spk_cal_filt = spk_cal.b;
+    end
 end
 
 handles.random_loop = get(handles.random_loops_check, 'Value');
@@ -201,23 +209,30 @@ end
 
 cyc = str2double(get(handles.cycles_edit, 'String'));
 
+
+% get/set audio and visual-only baseline parameters 
 % audio.aud_only_BL = get(handles.aud_BL_check, 'Value');
 % visual.vis_only_BL = get(handles.vis_BL_check, 'Value');
-%
-% if audio.aud_only_BL
-%     vars_loop = [vars_loop 'aud_only_BL'];
-%     vals_loop = [vals_loop];
-% end
-%
-% if visual.vis_only_BL
-%     vars_loop = [vars_loop 'vis_only_BL'];
-% end
+
+if get(handles.aud_BL_check, 'Value')
+    vars_loop = [vars_loop 'aud_BL'];
+    vals_loop = [vals_loop zeros(size(vals_loop,1),1)];
+    vals_loop = [vals_loop; [zeros(1,size(vals_loop,2)-1) 1]]; 
+    audio.dur_BL =  str2double(get(handles.dur_aud_edit_BL, 'String')); 
+    audio.freq_BL = str2double(get(handles.tone_freq_edit_BL, 'String')); 
+end
+
+if get(handles.vis_BL_check, 'Value')
+    vars_loop = [vars_loop 'vis_BL'];
+    vals_loop = [vals_loop zeros(size(vals_loop,1),1)];
+    vals_loop = [vals_loop; [zeros(1,size(vals_loop,2)-1) 1]]; 
+end
 
 num_combs = size(vals_loop,1);
 
 if ~isempty(vars_loop)
     if cyc < num_combs
-        cyc = char(inputdlg(['Input loop values require min ' num2str(size(vals_loop,1))...
+        cyc = char(inputdlg(['Input loop + baselines require min ' num2str(size(vals_loop,1))...
             ' trials for all combinations. Value entered in Nr. of Trials box is ' ...
             num2str(cyc) '. Confirm desired number of trials here:'], 'Confirm nr trials', 1));
     elseif mod(cyc, num_combs) ~= 0
@@ -290,10 +305,10 @@ end
 % SOA
 % ISI
 % stim_start
-% audio_dur
-% audio_freq
-% audio_atten
-% light
+% audio_dur *
+% audio_freq * 
+% audio_atten * 
+% light 
 % light_on
 % light_off
 % light_level
@@ -310,6 +325,8 @@ loop_light_off = strmatch('light_off', vars_loop, 'exact');
 loop_light = strmatch('light', vars_loop, 'exact');
 loop_vis_stim = strmatch('vis_stim', vars_loop, 'exact');
 loop_light_level = strmatch('light_level', vars_loop, 'exact');
+loop_aud_BL = strmatch('aud_BL', vars_loop, 'exact'); 
+loop_vis_BL = strmatch('vis_BL', vars_loop, 'exact');  
 % loop_audo_click_freq = strmatch('audio_click_freq', vars_loop);
 
 % PARAMS
@@ -329,6 +346,20 @@ else
     params.ISI = repmat(str2double(get(handles.ISI_edit, 'String')), 1, cyc);
 end
 
+% baselines:
+if ~isempty(loop_aud_BL)
+    audio.aud_only_BL = vals_loop(:,loop_aud_BL);
+else
+    audio.aud_only_BL = zeros(1,cyc);
+end
+
+if ~isempty(loop_vis_BL)
+    visual.vis_only_BL = vals_loop(:,loop_vis_BL);
+else
+    visual.vis_only_BL = zeros(1,cyc);
+end
+
+% other loops: 
 if ~isempty(loop_light_level)
     params.light_level = vals_loop(:,loop_light_level);
 else
@@ -518,6 +549,34 @@ switch aud_select
         audio.params_other = [];
 end
 
+
+% get audio baseline info
+if get(handles.aud_BL_check, 'Value')
+    aud_select_BL = get(get(handles.aud_stim_panel_BL, 'SelectedObject'), 'String');
+    switch aud_select_BL
+        case 'White noise'
+            audio.genFunc_BL = @genWhiteNoise;
+        case 'Tone'
+            audio.genFunc_BL = @genSinTone;
+        case 'Load wave'
+            
+        case 'Clicks'
+            audio.params_other_BL.click_freq = str2double(get(handles.clicks_freq_edit, 'String'));
+            audio.params_other_BL.click_dur = 4; %4ms dur hard-coded
+            audio.params_other_BL.ramp_on_dur = 1; %1ms dur hard-coded
+            audio.params_other_BL.ramp_off_dur = 1; %1ms dur hard-coded
+            %audio.clicks_freq = str2double(get(handles.clicks_freq_edit, 'String'));
+            audio.genFunc_BL = @genClickTrain;
+            
+        case 'No auditory'
+            audio.genFunc_BL = @genNoAudio;
+    end
+    
+    if ~strcmp(aud_select_BL, 'Clicks')
+        audio.params_other_BL = [];
+    end
+end
+
 audio.pad_len = 10; % IS THIS USED ANYWHERE?
 audio.offset_atten = str2double(get(handles.offset_atten_edit, 'String'));
 
@@ -541,7 +600,6 @@ visual.cycles_perSec = str2double(get(handles.cycles_per_sec_edit, 'String'));
 visual.angle = str2double(get(handles.angle_edit, 'String'));
 visual.rotateMode = [];
 visual.sin_varying = get(handles.sinusoidal_check, 'Value');
-
 
 switch vis_select
     case 'Flash'
@@ -660,7 +718,7 @@ pause(0.2);
 visual.syncFlashDur = 30/1000; %30ms
 visual.syncFlashDims = [0 0 100 100];
 % visual.flashFreq = 5;
-
+keyboard
 AVengine(audio, visual, params, handles.status_text, handles.tcp_handle, handles.pub_socket, handles.light_pub_socket, session_save);
 
 
@@ -2511,11 +2569,13 @@ if get(hObject, 'Value')
     %          uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
     %        'Position', [0.45 0.36 0.3 0.06], 'String', 'Tilt angle')
     handles.aud_BL_fh = fh;
+    handles.aud_stim_panel_BL = bg; 
 else
     if isfield(handles, 'aud_BL_fh') && ishandle(handles.aud_BL_fh)
         close(handles.aud_BL_fh);
     end
 end
+guidata(hObject, handles);
 
 
 

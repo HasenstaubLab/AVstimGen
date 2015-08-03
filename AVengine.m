@@ -189,7 +189,7 @@ preVflips = sugLat_flips + SOA_flips;
 
 if params.trigger_control
     % First trial control trigger
-    buffhandle = genTrControlTriggers(pahandle, audio, params, 1); % first call to genAudioOnline
+    buffhandle = genTrControlTriggers(pahandle, audio, params, 1); 
     PsychPortAudio('FillBuffer', pahandle, buffhandle);
     startTime = PsychPortAudio('Start', pahandle,1,0,1);
 end
@@ -291,7 +291,7 @@ if params.trigger_control
     %fprintf('Trig 1 Time elapsed is %f', t9-startTime);
 end
 
-buffhandle = genAudioOnline(pahandle, audio, params, lpind); % first call to genAudioOnline
+buffhandle = genAudioOnline(pahandle, audio, visual, params, lpind); % first call to genAudioOnline
 PsychPortAudio('FillBuffer', pahandle, buffhandle);
 
 [kDown, dummy, kCode] = KbCheck; % add in an early exit flag for quick abort
@@ -476,7 +476,7 @@ if ~exit_flag
             lpind = lpind +1; % update ind
             
             % replace auditory stimulus
-            buffhandle = genAudioOnline(pahandle, audio, params, lpind);
+            buffhandle = genAudioOnline(pahandle, audio, visual, params, lpind);
             PsychPortAudio('FillBuffer', pahandle, buffhandle);
             [SOA_flips SOA_Tdel] = calcVdelay(params.SOA(lpind), params.stimStart(lpind), padLen, ifi);
             preVflips = sugLat_flips + SOA_flips;

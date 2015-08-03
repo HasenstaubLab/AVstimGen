@@ -1,11 +1,18 @@
-function buffhandle = genAudioOnline(pahandle, audio, params, ind) 
+function buffhandle = genAudioOnline(pahandle, audio, visual, params, ind) 
 
 disp('********************************************************************')
 disp(['TRIAL ' num2str(ind')]); 
 disp('********************************************************************')
 t1 = GetSecs;
 
-audio_data = feval(audio.genFunc, ind, audio.dur(ind), audio.freq(ind), audio.Fs, audio.params_other);
+if visual.vis_only_BL(ind)
+    audio_data = feval(@genNoAudio, ind, audio.dur(ind), audio.freq(ind), audio.Fs, audio.params_other);   
+elseif audio.aud_only_BL(ind)
+    audio_data = feval(audio.genFunc_BL, ind, audio.dur_BL, audio.freq_BL, audio.Fs, audio.params_other_BL);
+else
+    audio_data = feval(audio.genFunc, ind, audio.dur(ind), audio.freq(ind), audio.Fs, audio.params_other);
+end
+
 
 %if ~strcmp(audio.genFunc, 'genNoAudio')
 % do things to audio
@@ -13,7 +20,7 @@ if audio.AM_flag
     audio_data = addAmpMod(audio_data, audio.AM_freq, audio.Fs);
 end
 
-if ~strcmp(char(audio.genFunc), 'genNoAudio')
+if ~strcmp(char(audio.genFunc), 'genNoAudio') & ~visual.vis_only_BL(ind)
     aud_trial = 1; 
     % apply 4kHz highpass zero-phase filter
     Wn = 3.9e3/(0.5*audio.Fs); % pass above 3.9 kHz 
@@ -28,48 +35,16 @@ if ~strcmp(char(audio.genFunc), 'genNoAudio')
         audio_data = filter(audio.spk_cal_filt, 1, audio_data); 
         disp('Speaker calibration filter applied'); 
     end
-%     
-%     p.tapers = [4 7];
-%     p.Fs = 192000; 
-%     [S,f] = mtspectrumc(audio_data, p); 
-%     [S2,f2] = mtspectrumc(audio_data2, p); 
-%     sca
-%     
-%     figure; 
-%     plot(f, smooth(S,100), 'b'); 
-%     hold on
-%     plot(f2, smooth(S2,100), 'r'); 
-%     legend({'WN before spkr filt', 'After spkr filt'})
-%     xlabel('Freq');
-%     ylabel('Power units'); 
-%     set(gca, 'FontSize', 12); 
-%     
-%     figure; 
-%     plot(audio_data(1:19200)); 
-%     hold on
-%     plot(audio_data2(1:19200), 'r');
-%     keyboard
-    
-    
-%     keyboard
-%     
-    % apply rms normalization 
-    
     
     % apply attenuation
     %if audio.atten(ind) ~= 0
-        atten = 10^-((audio.atten(ind) + audio.offset_atten)/20);
-        audio_data = audio_data*atten;
-%         disp('********************************************************************')
-% disp(['ATTEN ' num2str(atten)]); 
-% disp('********************************************************************')
-%    end
+    atten = 10^-((audio.atten(ind) + audio.offset_atten)/20);
+    audio_data = audio_data*atten;  
 else
     aud_trial = 0; 
 end
 
 % add triggers    
-
 if strcmp(char(audio.genFunc), 'retWavAudio')
     trialLen_ms= round(length(audio_data)/(audio.Fs/1e3)+100);
 else
