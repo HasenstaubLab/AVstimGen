@@ -1,11 +1,11 @@
 function varargout = AVstimGen(varargin)
 % AVSTIMGEN
-% GUI for Audio Visual Stimulus Generation 
-% Dependencies: 
+% GUI for Audio Visual Stimulus Generation
+% Dependencies:
 % PsychToolbox V3
 % zeroMQ bindings for MATLAB (for inter-computer communication)
-% 
-% Ryan Morrill, 2014 
+%
+% Ryan Morrill, 2014
 
 % Last Modified by GUIDE v2.5 29-Jun-2015 14:32:15
 
@@ -40,12 +40,12 @@ function AVstimGen_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for AVstimGen
 handles.output = hObject;
 
-% set(gcf, 'CloseRequestFcn', @cleanUpFun); 
+% set(gcf, 'CloseRequestFcn', @cleanUpFun);
 
-% because there seems to be a weird bug: 
-% figHandles = get(0, 'Children'); 
+% because there seems to be a weird bug:
+% figHandles = get(0, 'Children');
 % if numel(figHandles)>1
-%     close(figHandles(1), 'force'); 
+%     close(figHandles(1), 'force');
 % end
 
 % CHECK FOR PSYCHTOOLBOX
@@ -54,7 +54,7 @@ if str2num(verTex(1)) < 3
     errordlg('You are running psychtoolbox lower than v3 and this software aint gonna work.');
 end
 
-% set close function 
+% set close function
 %figure('CloseRequestFcn', @cleanup_fun)
 
 InitializePsychSound(1);
@@ -84,7 +84,7 @@ switch currdev.NrOutputChannels
         set([handles.ch2_popup, handles.ch3_popup, handles.ch4_popup], 'Value', 5); % value 5 = 'Empty'
         set([handles.ch2_popup, handles.ch3_popup, handles.ch4_popup], 'Enable', 'off');
     case 2
-        set([handles.ch3_popup, handles.ch4_popup],  'Value', 5); 
+        set([handles.ch3_popup, handles.ch4_popup],  'Value', 5);
         set([handles.ch3_popup, handles.ch4_popup], 'Enable', 'off');
     case 3
         set(handles.ch4_popup, 'Value', 5);
@@ -92,13 +92,13 @@ switch currdev.NrOutputChannels
     case 4
 end
 
-handles = updateHandlesStruct(handles); 
+handles = updateHandlesStruct(handles);
 
 % for keeping track of expts
 
-AVstimDir = which('AVstimGen'); 
+AVstimDir = which('AVstimGen');
 AVstimDir = AVstimDir(1:end-11);
-handles.AVstimDir = AVstimDir; 
+handles.AVstimDir = AVstimDir;
 
 logfile = 'StimLog_do_not_edit.mat';
 cd(AVstimDir)
@@ -115,18 +115,18 @@ handles.lastexpdate = lastexpdate;
 handles.lastexpno = lastexpno;
 
 handles.send_messages = 0;
-handles.pub_messages = 0; 
-handles.pub_light_level = 0; 
+handles.pub_messages = 0;
+handles.pub_light_level = 0;
 
-spk_cal_dir = '/Users/hlab/Documents/MATLAB/AVstimGen/SpeakerCalFiles'; %default location 
-spk_cal_file = get(handles.loaded_spk_cal_txt, 'String'); 
+spk_cal_dir = '/Users/hlab/Documents/MATLAB/AVstimGen/SpeakerCalFiles'; %default location
+spk_cal_file = get(handles.loaded_spk_cal_txt, 'String');
 handles.spk_cal_file = fullfile(spk_cal_dir, spk_cal_file);
-if exist(handles.spk_cal_file, 'file') == 0 
-    warndlg(sprintf('No %s found in %s, the default spk cal file directory. The speaker calibration will not load', spk_cal_file, spk_cal_dir), 'Incorrect speaker cal file'); 
+if exist(handles.spk_cal_file, 'file') == 0
+    warndlg(sprintf('No %s found in %s, the default spk cal file directory. The speaker calibration will not load', spk_cal_file, spk_cal_dir), 'Incorrect speaker cal file');
 end
 
 
-handles.lightTest = ''; 
+handles.lightTest = '';
 
 plotTrialStruct(handles);
 
@@ -154,7 +154,7 @@ function play_button_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-if ~handles.send_messages & ~handles.pub_messages 
+if ~handles.send_messages & ~handles.pub_messages
     msg_quest_ans = questdlg('Warning: no TCP connection established for network event messages. Proceed?', 'Connection warning', 'Yes', 'No', 'Yes');
     drawnow; pause(0.05);
     if strmatch(msg_quest_ans, 'No')
@@ -171,7 +171,7 @@ if ~isfield(handles, 'pub_socket');
 end
 
 if ~isfield(handles, 'light_pub_socket');
-    handles.light_pub_socket = []; 
+    handles.light_pub_socket = [];
 end
 
 if ~isfield(handles, 'spk_cal_file') || isempty(handles.spk_cal_file)
@@ -181,8 +181,8 @@ if ~isfield(handles, 'spk_cal_file') || isempty(handles.spk_cal_file)
         return
     end
 else
-    spk_cal = load(handles.spk_cal_file, 'b'); 
-    audio.spk_cal_filt = spk_cal.b; 
+    spk_cal = load(handles.spk_cal_file, 'b');
+    audio.spk_cal_filt = spk_cal.b;
 end
 
 handles.random_loop = get(handles.random_loops_check, 'Value');
@@ -191,7 +191,7 @@ handles.random_loop = get(handles.random_loops_check, 'Value');
 
 if isempty(vars_loop) && isempty(vals_loop)
     params.loop_mode = 0;
-    params.trial_seq_msg = []; 
+    params.trial_seq_msg = [];
 elseif isempty(vars_loop) ~= isempty(vals_loop) || length(vars_loop) ~= size(vals_loop,2)
     errordlg('Problem - check loop box. Does every var have a corresponding val and vice versa?');
     return
@@ -201,19 +201,19 @@ end
 
 cyc = str2double(get(handles.cycles_edit, 'String'));
 
-% audio.aud_only_BL = get(handles.aud_BL_check, 'Value'); 
-% visual.vis_only_BL = get(handles.vis_BL_check, 'Value'); 
-% 
-% if audio.aud_only_BL  
-%     vars_loop = [vars_loop 'aud_only_BL']; 
-%     vals_loop = [vals_loop]; 
+% audio.aud_only_BL = get(handles.aud_BL_check, 'Value');
+% visual.vis_only_BL = get(handles.vis_BL_check, 'Value');
+%
+% if audio.aud_only_BL
+%     vars_loop = [vars_loop 'aud_only_BL'];
+%     vals_loop = [vals_loop];
 % end
-% 
+%
 % if visual.vis_only_BL
-%     vars_loop = [vars_loop 'vis_only_BL']; 
+%     vars_loop = [vars_loop 'vis_only_BL'];
 % end
 
-num_combs = size(vals_loop,1); 
+num_combs = size(vals_loop,1);
 
 if ~isempty(vars_loop)
     if cyc < num_combs
@@ -226,7 +226,7 @@ if ~isempty(vars_loop)
             num2str(cyc) '. Confirm desired number of trials here:'], 'Confirm nr trials', 1));
     end
     if isempty(cyc)
-        disp('Error: No input given, returning. Try again.'); 
+        disp('Error: No input given, returning. Try again.');
         return
     end
     
@@ -236,15 +236,15 @@ if ~isempty(vars_loop)
     end
     
     if cyc>num_combs % expand vars_loop to fit requested size
-         m = mod(cyc, num_combs); 
-         numreps = floor(cyc/num_combs); 
-        if handles.random_loop 
-            vals_loop_temp = []; 
+        m = mod(cyc, num_combs);
+        numreps = floor(cyc/num_combs);
+        if handles.random_loop
+            vals_loop_temp = [];
             for q = 1:numreps
                 vals_loop_temp = [vals_loop_temp; vals_loop(randperm(length(vals_loop)),:)];
             end
-            vals_loop_extra = vals_loop(1:m,:); 
-            vals_loop = [vals_loop_temp; vals_loop_extra(randperm(length(vals_loop_extra)),:)]; 
+            vals_loop_extra = vals_loop(1:m,:);
+            vals_loop = [vals_loop_temp; vals_loop_extra(randperm(length(vals_loop_extra)),:)];
         else
             vals_loop_temp = repmat(vals_loop, floor(cyc/num_combs), 1);
             m = mod(cyc, num_combs);
@@ -265,10 +265,10 @@ if ~isempty(vars_loop)
         end
     end
     
-%     if handles.random_loop && ~isempty(vals_loop)
-%         rand_ind = randperm(length(vals_loop));
-%         vals_loop = vals_loop(rand_ind,:);
-%     end
+    %     if handles.random_loop && ~isempty(vals_loop)
+    %         rand_ind = randperm(length(vals_loop));
+    %         vals_loop = vals_loop(rand_ind,:);
+    %     end
 end
 
 %test
@@ -280,23 +280,23 @@ if params.loop_mode
         msg_content = [msg_content vars_loop{i} ' ' num2str(vals_loop(:,i)') ' '];
     end
     params.trial_seq_msg = ['TrialSeq ' msg_content];
-    params.var_list = vars_loop; 
-    params.stim_vals = vals_loop; 
-
+    params.var_list = vars_loop;
+    params.stim_vals = vals_loop;
+    
 end
 
 
 % Loop-able values will be:
 % SOA
 % ISI
-% stim_start 
+% stim_start
 % audio_dur
-% audio_freq 
-% audio_atten 
-% light 
+% audio_freq
+% audio_atten
+% light
 % light_on
-% light_off 
-% light_level 
+% light_off
+% light_level
 % vis_stim
 
 loop_SOA = strmatch('SOA', vars_loop, 'exact');
@@ -305,18 +305,18 @@ loop_stim_start = strmatch('stim_start', vars_loop, 'exact');
 loop_audio_dur = strmatch('audio_dur', vars_loop, 'exact');
 loop_audio_freq = strmatch('audio_freq', vars_loop, 'exact');
 loop_audio_atten = strmatch('audio_atten', vars_loop, 'exact');
-loop_light_on = strmatch('light_on', vars_loop, 'exact'); 
-loop_light_off = strmatch('light_off', vars_loop, 'exact'); 
-loop_light = strmatch('light', vars_loop, 'exact'); 
+loop_light_on = strmatch('light_on', vars_loop, 'exact');
+loop_light_off = strmatch('light_off', vars_loop, 'exact');
+loop_light = strmatch('light', vars_loop, 'exact');
 loop_vis_stim = strmatch('vis_stim', vars_loop, 'exact');
-loop_light_level = strmatch('light_level', vars_loop, 'exact'); 
+loop_light_level = strmatch('light_level', vars_loop, 'exact');
 % loop_audo_click_freq = strmatch('audio_click_freq', vars_loop);
 
 % PARAMS
-params.expt_name = get(handles.exp_name_edit, 'String'); 
-params.cycles = cyc; 
+params.expt_name = get(handles.exp_name_edit, 'String');
+params.cycles = cyc;
 
-params.trialLen  = handles.trialLen; 
+params.trialLen  = handles.trialLen;
 
 % two ways to get variable ISIs: loop box and checkbox for range ISI
 if ~isempty(loop_ISI)
@@ -326,13 +326,13 @@ elseif get(handles.ISI_range_check, 'Value')
     ISI_upper = str2double(get(handles.ISI2_edit, 'String'));
     params.ISI = ISI_lower + (ISI_upper-ISI_lower)*rand(1,cyc);
 else
-    params.ISI = repmat(str2double(get(handles.ISI_edit, 'String')), 1, cyc); 
+    params.ISI = repmat(str2double(get(handles.ISI_edit, 'String')), 1, cyc);
 end
 
 if ~isempty(loop_light_level)
-    params.light_level = vals_loop(:,loop_light_level); 
+    params.light_level = vals_loop(:,loop_light_level);
 else
-    params.light_level = repmat(str2double(get(handles.light_level_edit, 'String')), 1, cyc); 
+    params.light_level = repmat(str2double(get(handles.light_level_edit, 'String')), 1, cyc);
 end
 
 if ~isempty(loop_SOA)
@@ -341,15 +341,15 @@ else
     params.SOA = repmat(handles.SOA,1,cyc);
 end
 
-if ~isempty(loop_stim_start) 
-    params.stimStart = vals_loop(:,loop_stim_start); 
+if ~isempty(loop_stim_start)
+    params.stimStart = vals_loop(:,loop_stim_start);
 else
     params.stimStart = repmat(handles.stimStart,1,cyc);
 end
 
 params.lightType = get(get(handles.light_panel, 'SelectedObject'), 'String');
 
-params.trigger_control = get(handles.trigger_control_check, 'Value'); 
+params.trigger_control = get(handles.trigger_control_check, 'Value');
 
 % get channel assignments
 ch1str = get(handles.ch1_popup, 'String');
@@ -366,26 +366,26 @@ ch4val = get(handles.ch4_popup, 'Value');
 params.chSelect{4} = ch4str{ch4val};
 
 if strcmp(params.chSelect{1}, 'All Trigs One Ch') | strcmp(params.chSelect{2}, 'All Trigs One Ch')
-    params.allTriggersOneCh = 1; 
-    set([handles.ch3_popup handles.ch4_popup], 'Value', 5); % set 3 and 4 to empty so that nothing is assigned to them 
-else 
-    params.allTriggersOneCh = 0; 
+    params.allTriggersOneCh = 1;
+    set([handles.ch3_popup handles.ch4_popup], 'Value', 5); % set 3 and 4 to empty so that nothing is assigned to them
+else
+    params.allTriggersOneCh = 0;
 end
 
 
 audio.numChans = 4 - length(strmatch('Empty', params.chSelect));
-audio.currdevind = handles.currdevind; 
+audio.currdevind = handles.currdevind;
 
 if strcmp(params.lightType, 'No light');
-    params.light_trial = zeros(1,cyc); 
+    params.light_trial = zeros(1,cyc);
     params.lightStart = nan(1,cyc);
     params.lightStop = nan(1,cyc);
 else
     if ~isempty(loop_light)
-        params.light_trial = vals_loop(:,loop_light); 
-    else 
-        params.light_trial = ones(1,cyc); 
-    end 
+        params.light_trial = vals_loop(:,loop_light);
+    else
+        params.light_trial = ones(1,cyc);
+    end
     
     if ~isempty(loop_light_on)
         params.lightStart = vals_loop(:,loop_light_on);
@@ -402,7 +402,7 @@ end
 
 % loop visual stimulus mode
 if ~isempty(loop_vis_stim)
-    visual.vis_stim = vals_loop(:,loop_vis_stim); 
+    visual.vis_stim = vals_loop(:,loop_vis_stim);
 else
     visual.vis_stim = ones(1,cyc); % defaults to having visual stimulus on every trial
 end
@@ -465,7 +465,7 @@ switch aud_select
             m = mod(cyc, pl_len);
             numreps = floor(cyc/pl_len);
             audio.params_other = repmat(audio.params_other, 1, numreps);
-            audio.params_other = [audio.params_other audio.params_other{1:m}]; 
+            audio.params_other = [audio.params_other audio.params_other{1:m}];
         end
         
         if get(handles.random_loops_check, 'Value')
@@ -477,16 +477,16 @@ switch aud_select
         disp('Getting lengths of playlist files');
         for k = 1:cyc
             if ~isempty(strfind(audio.params_other{k}, '.wav'))
-                info = audioinfo(audio.parms_other{k}); 
-                audio.dur(k) = info.Duration*1000; % in ms   
+                info = audioinfo(audio.parms_other{k});
+                audio.dur(k) = info.Duration*1000; % in ms
             elseif ~isempty(strfind(audio.params_other{k}, '.mat'))
-                matinfo = matfile(audio.params_other{k}); 
-                info = whos(matinfo, 'y'); 
+                matinfo = matfile(audio.params_other{k});
+                info = whos(matinfo, 'y');
                 if isempty(info)
-                    errordlg(sprintf('File %s does not contain variable ''y'', check that this is a mat file for sound playback', audio.params_other{k}), 'No audio found'); 
+                    errordlg(sprintf('File %s does not contain variable ''y'', check that this is a mat file for sound playback', audio.params_other{k}), 'No audio found');
                     return
                 else
-                audio.dur(k) = (info.size(1)/audio.Fs)*1e3; 
+                    audio.dur(k) = (info.size(1)/audio.Fs)*1e3;
                 end
             end
         end
@@ -495,16 +495,16 @@ switch aud_select
         %         filename = uigetfile();
         %         try
         %             [y, wavFs] = wavread(filename);
-%             disp(['Opened file ' filename]);
-%             handles.aud_y = y(1,:);
-%             if wavFs ~= handles.Fs
-%                 errordlg(sprintf('Sampling rate from wave file is %i Hz but system sampling rate is set to %i Hz', wavFs, handles.Fs), 'Inconsistent Fs');
-%             end
-%         catch me
-%             disp(me);
-%             error('ERROR: AVstimGen could not open your file');
-%         end
-%         audio.params_other = [];
+        %             disp(['Opened file ' filename]);
+        %             handles.aud_y = y(1,:);
+        %             if wavFs ~= handles.Fs
+        %                 errordlg(sprintf('Sampling rate from wave file is %i Hz but system sampling rate is set to %i Hz', wavFs, handles.Fs), 'Inconsistent Fs');
+        %             end
+        %         catch me
+        %             disp(me);
+        %             error('ERROR: AVstimGen could not open your file');
+        %         end
+        %         audio.params_other = [];
     case 'Clicks'
         audio.params_other.click_freq = str2double(get(handles.clicks_freq_edit, 'String'));
         audio.params_other.click_dur = 4; %4ms dur hard-coded
@@ -519,7 +519,7 @@ switch aud_select
 end
 
 audio.pad_len = 10; % IS THIS USED ANYWHERE?
-audio.offset_atten = str2double(get(handles.offset_atten_edit, 'String')); 
+audio.offset_atten = str2double(get(handles.offset_atten_edit, 'String'));
 
 % audio.trig1params = [1 audio.Fs*1e-3]; % structure of this?
 % audio.trig2params = [1 audio.Fs*1e-3];
@@ -548,7 +548,7 @@ switch vis_select
         visual.stimMode = 'FL';
         visual.useProceduralTex = 0;
         visual.useMovie = 0;
-        visual.noVisual = 0; 
+        visual.noVisual = 0;
         visual.updatePhase = 0;
         visual.useFlashMode = 1;
     case 'Flash pulses'
@@ -557,7 +557,7 @@ switch vis_select
         visual.useMovie = 0;
         visual.updatePhase = 0;
         visual.useFlashMode = 1;
-        visual.noVisual = 0; 
+        visual.noVisual = 0;
         
     case 'Drifting grating'
         visual.stimMode = 'DG';
@@ -565,7 +565,7 @@ switch vis_select
         visual.useMovie = 0;
         visual.useFlashMode = 0;
         visual.updatePhase = 1;
-        visual.noVisual = 0; 
+        visual.noVisual = 0;
         
         %         visual.PTparams(1) = 0;
         %         visual.PTparams(2) =
@@ -577,35 +577,35 @@ switch vis_select
         visual.useMovie = 0;
         visual.useFlashMode = 0;
         visual.updatePhase = 0;
-        visual.noVisual = 0; 
+        visual.noVisual = 0;
     case 'Gabor'
         visual.stimMode = 'GB';
         visual.useProceduralTex = 1;
         visual.useMovie = 0;
         visual.useFlashMode = 0;
         visual.updatePhase = 1;
-        visual.noVisual = 0; 
+        visual.noVisual = 0;
     case 'Raindropper'
         visual.stimMode = 'RD';
-        visual.noVisual = 0; 
-        visual.useMovie = 1; 
-        visual.useFlashMode = 0; 
-        visual.noVisual = 0; 
+        visual.noVisual = 0;
+        visual.useMovie = 1;
+        visual.useFlashMode = 0;
+        visual.noVisual = 0;
     case 'Load movie'
         visual.stimMode = 'LM';
-        visual.noVisual = 0; 
-        visual.useMovie = 1; 
+        visual.noVisual = 0;
+        visual.useMovie = 1;
         visual.useFlashMode = 0;
-        visual.noVisual = 0; 
+        visual.noVisual = 0;
     case 'No visual'
         visual.stimMode = 'NV';
-        visual.useProceduralTex = 0; 
-        visual.useMovie = 0; 
+        visual.useProceduralTex = 0;
+        visual.useMovie = 0;
         visual.useFlashMode = 0;
-        visual.noVisual = 1; 
+        visual.noVisual = 1;
 end
 
-% light test 
+% light test
 params.lightTest = handles.lightTest;
 
 if ~isempty(params.lightTest)
@@ -619,24 +619,24 @@ end
 % send messages?
 params.send_messages = handles.send_messages;
 params.pub_messages = handles.pub_messages;
-params.pub_light_level = handles.pub_light_level; 
+params.pub_light_level = handles.pub_light_level;
 
 dir_old = cd;
 %cd(AVstimDir)
-session_save.local_dir = [handles.AVstimDir 'StimData']; 
+session_save.local_dir = [handles.AVstimDir 'StimData'];
 session_save.server_dir = 'afp://holding.cin.ucsf.edu/Users/ryan/exptStimDataBackup';
 
 if ~isdir(session_save.local_dir)
-    mkdir(session_save.local_dir); 
+    mkdir(session_save.local_dir);
 end
 
-cd(session_save.local_dir); 
-session_save.local_dir = [handles.AVstimDir 'StimData']; 
+cd(session_save.local_dir);
+session_save.local_dir = [handles.AVstimDir 'StimData'];
 %params.date_str =  datestr(now, 'dd_mmmyyyy_HH_MM_SS');
 
-params.date_str = datestr(now, 'yyyy-mm-dd_HH-MM-SS'); 
+params.date_str = datestr(now, 'yyyy-mm-dd_HH-MM-SS');
 session_save.str=['stimInfoAll_' params.date_str '.mat'];
-save(session_save.str, 'audio', 'visual', 'params') 
+save(session_save.str, 'audio', 'visual', 'params')
 fprintf('Saving stim info locally to %s\n', fullfile(session_save.local_dir, session_save.str));
 
 % try
@@ -652,7 +652,7 @@ fprintf('Saving stim info locally to %s\n', fullfile(session_save.local_dir, ses
 %         return
 %     end
 % end
-   
+
 set(handles.status_text, 'String', 'Playing... press and hold ESC key to terminate session');
 pause(0.2);
 
@@ -1383,20 +1383,20 @@ function vis_stim_panel_SelectionChangeFcn(hObject, eventdata, handles)
 handles.vis = ~strcmp(get(get(handles.vis_stim_panel, 'SelectedObject'), 'String'), 'No visual');
 if ~handles.vis
     set(handles.contrast_edit, 'Enable', 'off');
-    set(handles.vis_freq_edit, 'Enable', 'off'); 
-    set(handles.cycles_per_sec_edit, 'Enable', 'off'); 
+    set(handles.vis_freq_edit, 'Enable', 'off');
+    set(handles.cycles_per_sec_edit, 'Enable', 'off');
     set(handles.angle_edit, 'Enable', 'off');
-    set(handles.dur_vis_edit, 'Enable', 'off'); 
-    set(handles.vis_width_edit, 'Enable', 'off'); 
-    set(handles.vis_height_edit, 'Enable', 'off'); 
+    set(handles.dur_vis_edit, 'Enable', 'off');
+    set(handles.vis_width_edit, 'Enable', 'off');
+    set(handles.vis_height_edit, 'Enable', 'off');
 else
     set(handles.contrast_edit, 'Enable', 'on');
-    set(handles.vis_freq_edit, 'Enable', 'on'); 
-    set(handles.cycles_per_sec_edit, 'Enable', 'on'); 
+    set(handles.vis_freq_edit, 'Enable', 'on');
+    set(handles.cycles_per_sec_edit, 'Enable', 'on');
     set(handles.angle_edit, 'Enable', 'on');
-    set(handles.dur_vis_edit, 'Enable', 'on'); 
-    set(handles.vis_width_edit, 'Enable', 'on'); 
-    set(handles.vis_height_edit, 'Enable', 'on'); 
+    set(handles.dur_vis_edit, 'Enable', 'on');
+    set(handles.vis_width_edit, 'Enable', 'on');
+    set(handles.vis_height_edit, 'Enable', 'on');
 end
 
 plotTrialStruct(handles);
@@ -1446,12 +1446,12 @@ function aud_stim_panel_SelectionChangeFcn(hObject, eventdata, handles)
 %	OldValue: handle of the previously selected object or empty if none was selected
 %	NewValue: handle of the currently selected object
 % handles    structure with handles and user data (see GUIDATA)
-fcnselect = get(get(handles.aud_stim_panel, 'SelectedObject'), 'String'); 
+fcnselect = get(get(handles.aud_stim_panel, 'SelectedObject'), 'String');
 handles.aud = ~strcmp(fcnselect, 'No auditory');
 if strcmp(fcnselect, 'Load wave')
-    handles.params_other = uipickfiles(); 
-    set(handles.stim_start_edit, 'String', num2str(50)); % set automatic 50ms delay 
-    handles.stimStart = 50; 
+    handles.params_other = uipickfiles();
+    set(handles.stim_start_edit, 'String', num2str(50)); % set automatic 50ms delay
+    handles.stimStart = 50;
 end
 plotTrialStruct(handles);
 guidata(hObject, handles);
@@ -1565,16 +1565,16 @@ function fs_popup_Callback(hObject, eventdata, handles)
 % Hints: contents = cellstr(get(hObject,'String')) returns fs_popup contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from
 %        fs_popup
-Fs_possible = cellstr(get(hObject, 'String')); 
-Fs_seln = str2num(Fs_possible{get(hObject, 'Value')}); 
+Fs_possible = cellstr(get(hObject, 'String'));
+Fs_seln = str2num(Fs_possible{get(hObject, 'Value')});
 
 if Fs_seln == 192000
     set([handles.ch3_popup handles.ch4_popup], 'Value', 5);
-    set([handles.ch3_popup, handles.ch4_popup], 'Enable', 'off'); 
+    set([handles.ch3_popup, handles.ch4_popup], 'Enable', 'off');
 else
     set([handles.ch3_popup, handles.ch4_popup], 'Enable', 'on');
 end
-guidata(hObject, handles); 
+guidata(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -1596,114 +1596,114 @@ function load_params_push_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-dir_old = cd; 
-cd(fullfile(handles.AVstimDir, 'Experiment Parameters')); 
-[ld_file ld_dir] = uigetfile('*.mat', 'Load GUI paramaters file'); 
+dir_old = cd;
+cd(fullfile(handles.AVstimDir, 'Experiment Parameters'));
+[ld_file ld_dir] = uigetfile('*.mat', 'Load GUI paramaters file');
 
 
-if ld_file == 0 
-    disp('User canceled load params file, no file loaded.'); 
-    cd(dir_old); 
-    return 
-end
-
-cd(ld_dir); 
-load(ld_file); 
-cd(dir_old); 
-
-if ~exist('guiState', 'var'); 
-    errordlg('Loaded mat file does not contain guiState structure'); 
+if ld_file == 0
+    disp('User canceled load params file, no file loaded.');
+    cd(dir_old);
     return
 end
 
-set(handles.loaded_params_txt, 'String', ld_file); 
+cd(ld_dir);
+load(ld_file);
+cd(dir_old);
 
-%set(handles.aud_stim_panel, 'SelectedObject', guiState.aud_stim_panel); 
-set(handles.clicks_radio, 'Value', guiState.clicks_radio); 
-set(handles.white_noise_radio, 'Value', guiState.white_noise_radio); 
-set(handles.tone_radio, 'Value', guiState.tone_radio); 
-set(handles.load_wave_radio, 'Value', guiState.load_wave_radio); 
+if ~exist('guiState', 'var');
+    errordlg('Loaded mat file does not contain guiState structure');
+    return
+end
+
+set(handles.loaded_params_txt, 'String', ld_file);
+
+%set(handles.aud_stim_panel, 'SelectedObject', guiState.aud_stim_panel);
+set(handles.clicks_radio, 'Value', guiState.clicks_radio);
+set(handles.white_noise_radio, 'Value', guiState.white_noise_radio);
+set(handles.tone_radio, 'Value', guiState.tone_radio);
+set(handles.load_wave_radio, 'Value', guiState.load_wave_radio);
 set(handles.no_auditory_radio, 'Value', guiState.no_auditory_radio);
-set(handles.dur_aud_edit, 'String', guiState.dur_aud_edit); 
-set(handles.AM_check, 'Value', guiState.AM_check); 
-set(handles.AM_freq_edit, 'String', guiState.AM_freq_edit); 
-set(handles.clicks_freq_edit, 'String', guiState.clicks_freq_edit); 
-set(handles.tone_freq_edit, 'String', guiState.tone_freq_edit); 
-set(handles.atten_edit, 'String', guiState.atten_edit); 
+set(handles.dur_aud_edit, 'String', guiState.dur_aud_edit);
+set(handles.AM_check, 'Value', guiState.AM_check);
+set(handles.AM_freq_edit, 'String', guiState.AM_freq_edit);
+set(handles.clicks_freq_edit, 'String', guiState.clicks_freq_edit);
+set(handles.tone_freq_edit, 'String', guiState.tone_freq_edit);
+set(handles.atten_edit, 'String', guiState.atten_edit);
 
 %set(handles.vis_stim_panel, 'SelectedObject', guiState.vis_stim_panel);
-set(handles.flash_radio, 'Value', guiState.flash_radio); 
-set(handles.flash_pulses_radio, 'Value', guiState.flash_pulses_radio); 
-set(handles.gratings_radio, 'Value', guiState.gratings_radio); 
-set(handles.raindropper_radio, 'Value', guiState.raindropper_radio); 
-set(handles.load_movie_radio, 'Value', guiState.load_movie_radio); 
-set(handles.no_visual_radio, 'Value', guiState.no_visual_radio); 
-set(handles.sinusoidal_check, 'Value', guiState.sinusoidal_check); 
-set(handles.dur_vis_edit, 'String', guiState.dur_vis_edit); 
-set(handles.vis_width_edit, 'String', guiState.vis_width_edit); 
-set(handles.vis_height_edit, 'String', guiState.vis_height_edit); 
-set(handles.contrast_edit, 'String', guiState.contrast_edit); 
-set(handles.vis_freq_edit, 'String', guiState.vis_freq_edit); 
-set(handles.cycles_per_sec_edit, 'String', guiState.cycles_per_sec_edit); 
-set(handles.angle_edit, 'String', guiState.angle_edit); 
+set(handles.flash_radio, 'Value', guiState.flash_radio);
+set(handles.flash_pulses_radio, 'Value', guiState.flash_pulses_radio);
+set(handles.gratings_radio, 'Value', guiState.gratings_radio);
+set(handles.raindropper_radio, 'Value', guiState.raindropper_radio);
+set(handles.load_movie_radio, 'Value', guiState.load_movie_radio);
+set(handles.no_visual_radio, 'Value', guiState.no_visual_radio);
+set(handles.sinusoidal_check, 'Value', guiState.sinusoidal_check);
+set(handles.dur_vis_edit, 'String', guiState.dur_vis_edit);
+set(handles.vis_width_edit, 'String', guiState.vis_width_edit);
+set(handles.vis_height_edit, 'String', guiState.vis_height_edit);
+set(handles.contrast_edit, 'String', guiState.contrast_edit);
+set(handles.vis_freq_edit, 'String', guiState.vis_freq_edit);
+set(handles.cycles_per_sec_edit, 'String', guiState.cycles_per_sec_edit);
+set(handles.angle_edit, 'String', guiState.angle_edit);
 
-%set(handles.light_panel, 'SelectedObject', guiState.light_panel); 
-set(handles.blue_radio, 'Value', guiState.blue_radio); 
-set(handles.green_radio, 'Value', guiState.green_radio); 
-set(handles.noLight_radio, 'Value', guiState.noLight_radio); 
-set(handles.light_start_edit, 'String', guiState.light_start_edit); 
-set(handles.light_stop_edit, 'String', guiState.light_stop_edit); 
+%set(handles.light_panel, 'SelectedObject', guiState.light_panel);
+set(handles.blue_radio, 'Value', guiState.blue_radio);
+set(handles.green_radio, 'Value', guiState.green_radio);
+set(handles.noLight_radio, 'Value', guiState.noLight_radio);
+set(handles.light_start_edit, 'String', guiState.light_start_edit);
+set(handles.light_stop_edit, 'String', guiState.light_stop_edit);
 
-set(handles.var1_edit, 'String', guiState.var1_edit); 
-set(handles.var2_edit, 'String', guiState.var2_edit); 
-set(handles.var3_edit, 'String', guiState.var3_edit); 
-set(handles.var4_edit, 'String', guiState.var4_edit); 
-set(handles.var5_edit, 'String', guiState.var5_edit); 
-set(handles.var6_edit, 'String', guiState.var6_edit); 
+set(handles.var1_edit, 'String', guiState.var1_edit);
+set(handles.var2_edit, 'String', guiState.var2_edit);
+set(handles.var3_edit, 'String', guiState.var3_edit);
+set(handles.var4_edit, 'String', guiState.var4_edit);
+set(handles.var5_edit, 'String', guiState.var5_edit);
+set(handles.var6_edit, 'String', guiState.var6_edit);
 
-set(handles.val1_edit, 'String', guiState.val1_edit); 
-set(handles.val2_edit, 'String', guiState.val2_edit); 
-set(handles.val3_edit, 'String', guiState.val3_edit); 
-set(handles.val4_edit, 'String', guiState.val4_edit); 
-set(handles.val5_edit, 'String', guiState.val5_edit); 
-set(handles.val6_edit, 'String', guiState.val6_edit); 
-set(handles.random_loops_check, 'Value', guiState.random_loops_check); 
+set(handles.val1_edit, 'String', guiState.val1_edit);
+set(handles.val2_edit, 'String', guiState.val2_edit);
+set(handles.val3_edit, 'String', guiState.val3_edit);
+set(handles.val4_edit, 'String', guiState.val4_edit);
+set(handles.val5_edit, 'String', guiState.val5_edit);
+set(handles.val6_edit, 'String', guiState.val6_edit);
+set(handles.random_loops_check, 'Value', guiState.random_loops_check);
 
-set(handles.trial_len_edit, 'String', guiState.trial_len_edit); 
-set(handles.stim_start_edit, 'String', guiState.stim_start_edit); 
-set(handles.SOA_edit, 'String', guiState.SOA_edit); 
-set(handles.ISI_edit, 'String', guiState.ISI_edit); 
-set(handles.ISI2_edit, 'String', guiState.ISI2_edit); 
-set(handles.ISI_range_check, 'Value', guiState.ISI_range_check); 
+set(handles.trial_len_edit, 'String', guiState.trial_len_edit);
+set(handles.stim_start_edit, 'String', guiState.stim_start_edit);
+set(handles.SOA_edit, 'String', guiState.SOA_edit);
+set(handles.ISI_edit, 'String', guiState.ISI_edit);
+set(handles.ISI2_edit, 'String', guiState.ISI2_edit);
+set(handles.ISI_range_check, 'Value', guiState.ISI_range_check);
 
-set(handles.fs_popup, 'Value', guiState.fs_popup); 
-set(handles.data_tcp_edit, 'String', guiState.data_tcp_edit); 
-set(handles.exp_name_edit, 'String', guiState.exp_name_edit); 
-set(handles.loaded_spk_cal_txt, 'String', guiState.loaded_spk_cal_txt); 
-set(handles.offset_atten_edit, 'String', guiState.offset_atten_edit); 
+set(handles.fs_popup, 'Value', guiState.fs_popup);
+set(handles.data_tcp_edit, 'String', guiState.data_tcp_edit);
+set(handles.exp_name_edit, 'String', guiState.exp_name_edit);
+set(handles.loaded_spk_cal_txt, 'String', guiState.loaded_spk_cal_txt);
+set(handles.offset_atten_edit, 'String', guiState.offset_atten_edit);
 
-set(handles.ch1_popup, 'Value', guiState.ch1_popup); 
-set(handles.ch2_popup, 'Value', guiState.ch2_popup); 
-set(handles.ch3_popup, 'Value', guiState.ch3_popup); 
-set(handles.ch4_popup, 'Value', guiState.ch4_popup); 
+set(handles.ch1_popup, 'Value', guiState.ch1_popup);
+set(handles.ch2_popup, 'Value', guiState.ch2_popup);
+set(handles.ch3_popup, 'Value', guiState.ch3_popup);
+set(handles.ch4_popup, 'Value', guiState.ch4_popup);
 
-%set(handles.rest_color_panel, 'SelectedObject', guiState.rest_color_panel); 
-set(handles.black_return_radio, 'String', guiState.black_return_radio); 
-set(handles.white_return_radio, 'String', guiState.white_return_radio); 
-set(handles.gray_return_radio, 'String', guiState.gray_return_radio); 
-set(handles.cycles_edit, 'String', guiState.cycles_edit); 
+%set(handles.rest_color_panel, 'SelectedObject', guiState.rest_color_panel);
+set(handles.black_return_radio, 'String', guiState.black_return_radio);
+set(handles.white_return_radio, 'String', guiState.white_return_radio);
+set(handles.gray_return_radio, 'String', guiState.gray_return_radio);
+set(handles.cycles_edit, 'String', guiState.cycles_edit);
 
-% filter file 
+% filter file
 if isfield(guiState, 'spk_cal_file')
     handles.spk_cal_file = guiState.spk_cal_file;
 end
 
-guidata(hObject, handles); 
+guidata(hObject, handles);
 
 handles = updateHandlesStruct(handles);
-guidata(hObject, handles); 
+guidata(hObject, handles);
 
-plotTrialStruct(handles); 
+plotTrialStruct(handles);
 
 % --- Executes on button press in save_params_push.
 function save_params_push_Callback(hObject, eventdata, handles)
@@ -1711,106 +1711,106 @@ function save_params_push_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-%guiState.aud_stim_panel = get(handles.aud_stim_panel, 'SelectedObject'); 
-guiState.clicks_radio = get(handles.clicks_radio, 'Value'); 
-guiState.white_noise_radio = get(handles.white_noise_radio, 'Value'); 
-guiState.tone_radio = get(handles.tone_radio, 'Value'); 
-guiState.load_wave_radio = get(handles.load_wave_radio, 'Value'); 
-guiState.no_auditory_radio = get(handles.no_auditory_radio, 'Value'); 
+%guiState.aud_stim_panel = get(handles.aud_stim_panel, 'SelectedObject');
+guiState.clicks_radio = get(handles.clicks_radio, 'Value');
+guiState.white_noise_radio = get(handles.white_noise_radio, 'Value');
+guiState.tone_radio = get(handles.tone_radio, 'Value');
+guiState.load_wave_radio = get(handles.load_wave_radio, 'Value');
+guiState.no_auditory_radio = get(handles.no_auditory_radio, 'Value');
 
-guiState.dur_aud_edit = get(handles.dur_aud_edit, 'String'); 
-guiState.AM_check = get(handles.AM_check, 'Value'); 
-guiState.AM_freq_edit = get(handles.AM_freq_edit, 'String'); 
-guiState.clicks_freq_edit = get(handles.clicks_freq_edit, 'String'); 
-guiState.tone_freq_edit = get(handles.tone_freq_edit, 'String'); 
-guiState.atten_edit = get(handles.atten_edit, 'String'); 
+guiState.dur_aud_edit = get(handles.dur_aud_edit, 'String');
+guiState.AM_check = get(handles.AM_check, 'Value');
+guiState.AM_freq_edit = get(handles.AM_freq_edit, 'String');
+guiState.clicks_freq_edit = get(handles.clicks_freq_edit, 'String');
+guiState.tone_freq_edit = get(handles.tone_freq_edit, 'String');
+guiState.atten_edit = get(handles.atten_edit, 'String');
 
-%guiState.vis_stim_panel = get(handles.vis_stim_panel, 'SelectedObject'); 
-guiState.flash_radio = get(handles.flash_radio, 'Value'); 
-guiState.flash_pulses_radio = get(handles.flash_pulses_radio, 'Value'); 
-guiState.gratings_radio = get(handles.gratings_radio, 'Value'); 
-guiState.raindropper_radio = get(handles.raindropper_radio, 'Value'); 
-guiState.load_movie_radio = get(handles.load_movie_radio, 'Value'); 
-guiState.no_visual_radio = get(handles.no_visual_radio, 'Value'); 
+%guiState.vis_stim_panel = get(handles.vis_stim_panel, 'SelectedObject');
+guiState.flash_radio = get(handles.flash_radio, 'Value');
+guiState.flash_pulses_radio = get(handles.flash_pulses_radio, 'Value');
+guiState.gratings_radio = get(handles.gratings_radio, 'Value');
+guiState.raindropper_radio = get(handles.raindropper_radio, 'Value');
+guiState.load_movie_radio = get(handles.load_movie_radio, 'Value');
+guiState.no_visual_radio = get(handles.no_visual_radio, 'Value');
 
-guiState.sinusoidal_check = get(handles.sinusoidal_check, 'Value'); 
-guiState.dur_vis_edit = get(handles.dur_vis_edit, 'String'); 
-guiState.vis_width_edit = get(handles.vis_width_edit, 'String'); 
-guiState.vis_height_edit = get(handles.vis_height_edit, 'String'); 
-guiState.contrast_edit = get(handles.contrast_edit, 'String'); 
-guiState.vis_freq_edit = get(handles.vis_freq_edit, 'String'); 
-guiState.cycles_per_sec_edit = get(handles.cycles_per_sec_edit, 'String'); 
-guiState.angle_edit = get(handles.angle_edit, 'String'); 
+guiState.sinusoidal_check = get(handles.sinusoidal_check, 'Value');
+guiState.dur_vis_edit = get(handles.dur_vis_edit, 'String');
+guiState.vis_width_edit = get(handles.vis_width_edit, 'String');
+guiState.vis_height_edit = get(handles.vis_height_edit, 'String');
+guiState.contrast_edit = get(handles.contrast_edit, 'String');
+guiState.vis_freq_edit = get(handles.vis_freq_edit, 'String');
+guiState.cycles_per_sec_edit = get(handles.cycles_per_sec_edit, 'String');
+guiState.angle_edit = get(handles.angle_edit, 'String');
 
 %guiState.light_panel = get(handles.light_panel, 'SelectedObject');
-guiState.blue_radio = get(handles.blue_radio, 'Value'); 
-guiState.green_radio = get(handles.green_radio, 'Value'); 
-guiState.noLight_radio = get(handles.noLight_radio, 'Value'); 
-guiState.light_start_edit = get(handles.light_start_edit, 'String'); 
-guiState.light_stop_edit = get(handles.light_stop_edit, 'String'); 
+guiState.blue_radio = get(handles.blue_radio, 'Value');
+guiState.green_radio = get(handles.green_radio, 'Value');
+guiState.noLight_radio = get(handles.noLight_radio, 'Value');
+guiState.light_start_edit = get(handles.light_start_edit, 'String');
+guiState.light_stop_edit = get(handles.light_stop_edit, 'String');
 
-guiState.var1_edit = get(handles.var1_edit, 'String'); 
-guiState.var2_edit = get(handles.var2_edit, 'String'); 
-guiState.var3_edit = get(handles.var3_edit, 'String'); 
-guiState.var4_edit = get(handles.var4_edit, 'String'); 
-guiState.var5_edit = get(handles.var5_edit, 'String'); 
-guiState.var6_edit = get(handles.var6_edit, 'String'); 
+guiState.var1_edit = get(handles.var1_edit, 'String');
+guiState.var2_edit = get(handles.var2_edit, 'String');
+guiState.var3_edit = get(handles.var3_edit, 'String');
+guiState.var4_edit = get(handles.var4_edit, 'String');
+guiState.var5_edit = get(handles.var5_edit, 'String');
+guiState.var6_edit = get(handles.var6_edit, 'String');
 
-guiState.val1_edit = get(handles.val1_edit, 'String'); 
-guiState.val2_edit = get(handles.val2_edit, 'String'); 
-guiState.val3_edit = get(handles.val3_edit, 'String'); 
-guiState.val4_edit = get(handles.val4_edit, 'String'); 
-guiState.val5_edit = get(handles.val5_edit, 'String'); 
-guiState.val6_edit = get(handles.val6_edit, 'String'); 
-guiState.random_loops_check = get(handles.random_loops_check, 'Value'); 
+guiState.val1_edit = get(handles.val1_edit, 'String');
+guiState.val2_edit = get(handles.val2_edit, 'String');
+guiState.val3_edit = get(handles.val3_edit, 'String');
+guiState.val4_edit = get(handles.val4_edit, 'String');
+guiState.val5_edit = get(handles.val5_edit, 'String');
+guiState.val6_edit = get(handles.val6_edit, 'String');
+guiState.random_loops_check = get(handles.random_loops_check, 'Value');
 
-guiState.trial_len_edit = get(handles.trial_len_edit, 'String'); 
-guiState.stim_start_edit = get(handles.stim_start_edit, 'String'); 
-guiState.SOA_edit = get(handles.SOA_edit, 'String'); 
-guiState.ISI_edit = get(handles.ISI_edit, 'String'); 
-guiState.ISI2_edit = get(handles.ISI2_edit, 'String'); 
-guiState.ISI_range_check = get(handles.ISI_range_check, 'Value'); 
+guiState.trial_len_edit = get(handles.trial_len_edit, 'String');
+guiState.stim_start_edit = get(handles.stim_start_edit, 'String');
+guiState.SOA_edit = get(handles.SOA_edit, 'String');
+guiState.ISI_edit = get(handles.ISI_edit, 'String');
+guiState.ISI2_edit = get(handles.ISI2_edit, 'String');
+guiState.ISI_range_check = get(handles.ISI_range_check, 'Value');
 
-guiState.fs_popup = get(handles.fs_popup, 'Value'); 
-guiState.data_tcp_edit = get(handles.data_tcp_edit, 'String'); 
-guiState.exp_name_edit = get(handles.exp_name_edit, 'String'); 
+guiState.fs_popup = get(handles.fs_popup, 'Value');
+guiState.data_tcp_edit = get(handles.data_tcp_edit, 'String');
+guiState.exp_name_edit = get(handles.exp_name_edit, 'String');
 guiState.loaded_spk_cal_txt = get(handles.loaded_spk_cal_txt, 'String');
-guiState.offset_atten_edit = get(handles.offset_atten_edit, 'String'); 
+guiState.offset_atten_edit = get(handles.offset_atten_edit, 'String');
 
-guiState.ch1_popup = get(handles.ch1_popup, 'Value'); 
-guiState.ch2_popup = get(handles.ch2_popup, 'Value'); 
-guiState.ch3_popup = get(handles.ch3_popup, 'Value'); 
-guiState.ch4_popup = get(handles.ch4_popup, 'Value'); 
+guiState.ch1_popup = get(handles.ch1_popup, 'Value');
+guiState.ch2_popup = get(handles.ch2_popup, 'Value');
+guiState.ch3_popup = get(handles.ch3_popup, 'Value');
+guiState.ch4_popup = get(handles.ch4_popup, 'Value');
 
-%guiState.rest_color_panel = get(handles.rest_color_panel, 'SelectedObject'); 
-guiState.black_return_radio = get(handles.black_return_radio, 'String'); 
-guiState.white_return_radio = get(handles.white_return_radio, 'String'); 
+%guiState.rest_color_panel = get(handles.rest_color_panel, 'SelectedObject');
+guiState.black_return_radio = get(handles.black_return_radio, 'String');
+guiState.white_return_radio = get(handles.white_return_radio, 'String');
 guiState.gray_return_radio = get(handles.gray_return_radio, 'String');
-guiState.cycles_edit = get(handles.cycles_edit, 'String'); 
+guiState.cycles_edit = get(handles.cycles_edit, 'String');
 
 if isfield(handles, 'spk_cal_file')
     guiState.spk_cal_file = handles.spk_cal_file;
 end
 
-[save_file,save_dir] = uiputfile('*.mat', 'Save params file as...'); 
-dir_old = cd; 
-cd(save_dir); 
-save(save_file, 'guiState'); 
-cd(dir_old); 
+[save_file,save_dir] = uiputfile('*.mat', 'Save params file as...');
+dir_old = cd;
+cd(save_dir);
+save(save_file, 'guiState');
+cd(dir_old);
 
-set(handles.loaded_params_txt, 'String', save_file); 
-guidata(hObject, handles); 
+set(handles.loaded_params_txt, 'String', save_file);
+guidata(hObject, handles);
 
 % --- Executes on button press in speaker_cal_push.
 function speaker_cal_push_Callback(hObject, eventdata, handles)
 % hObject    handle to speaker_cal_push (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-dir_old = cd; 
-cd(fullfile(handles.AVstimDir, 'SpeakerCalFiles')); 
+dir_old = cd;
+cd(fullfile(handles.AVstimDir, 'SpeakerCalFiles'));
 [spk_cal_file,spk_cal_dir] = uigetfile('*.mat', 'Load speaker calibration file', 'Speaker calibration file');
-cd(dir_old); 
-if spk_cal_file == 0 
+cd(dir_old);
+if spk_cal_file == 0
     set(handles.loaded_spk_cal_txt, 'String', []);
     handles.spk_cal_file = [];
     guidata(hObject, handles);
@@ -2150,19 +2150,19 @@ function connect_ip_push_Callback(hObject, eventdata, handles)
 if ~handles.send_messages
     try
         url = ['tcp://' get(handles.data_tcp_edit, 'String')];
-        disp(['Connecting to ' url]); 
+        disp(['Connecting to ' url]);
         handles.tcp_handle = zeroMQwrapper('StartConnectThread',url);
         handles.send_messages = 1;
         guidata(hObject, handles);
-        set(hObject, 'String', 'Disconnect', 'ForegroundColor', [1 0 0]); 
-        disp('We believe we are connected'); 
+        set(hObject, 'String', 'Disconnect', 'ForegroundColor', [1 0 0]);
+        disp('We believe we are connected');
     catch me
         disp('Error in establishing TCP connection. Messages may not be sent.')
         disp(me);
     end
 else
     handles.send_messages = disconnectZMQmsg(handles.tcp_handle);
-    handles.pub_socket = []; 
+    handles.pub_socket = [];
     set(hObject, 'String', 'Connect', 'ForegroundColor', [0 1 0]);
 end
 guidata(hObject, handles);
@@ -2205,8 +2205,8 @@ function connect_port_push_Callback(hObject, eventdata, handles)
 % hObject    handle to connect_port_push (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-% 
-% persistent socket 
+%
+% persistent socket
 % persistent ctx
 % persistent address
 
@@ -2237,25 +2237,25 @@ if ~handles.pub_messages
     set(hObject, 'String', 'Disconnect','ForegroundColor', [1 0 0]);
 else
     handles.pub_messages = disconnectZMQport(handles.ctx, handles.pub_socket, handles.pub_address);
-    handles.pub_socket = []; 
+    handles.pub_socket = [];
     set(hObject, 'String', 'Connect', 'ForegroundColor', [0 1 0]);
 end
- guidata(hObject, handles); 
- 
- function pub = disconnectZMQport(ctx, socket, address)
-     disp('Closing ZMQ publish connection');
-     zmq_disconnect(socket,address);
-     zmq_close(socket);
-     zmq_ctx_shutdown(ctx);
-     zmq_ctx_term(ctx);
-     pub = 0; 
- 
+guidata(hObject, handles);
+
+function pub = disconnectZMQport(ctx, socket, address)
+disp('Closing ZMQ publish connection');
+zmq_disconnect(socket,address);
+zmq_close(socket);
+zmq_ctx_shutdown(ctx);
+zmq_ctx_term(ctx);
+pub = 0;
+
 function msg = disconnectZMQmsg(tcp_handle)
-    % close ZMQ TCP conn
-    disp('Closing ZMQ messaging connection')
-    zeroMQwrapper('CloseThread',tcp_handle);
-    handle.tcp_handle = []; 
-    msg = 0; 
+% close ZMQ TCP conn
+disp('Closing ZMQ messaging connection')
+zeroMQwrapper('CloseThread',tcp_handle);
+handle.tcp_handle = [];
+msg = 0;
 
 
 % --- Executes on button press in trigger_control_check.
@@ -2276,11 +2276,11 @@ function soundcard_popup_Callback(hObject, eventdata, handles)
 % Hints: contents = cellstr(get(hObject,'String')) returns soundcard_popup contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from soundcard_popup
 
-seln = get(hObject, 'Value'); 
-handles.currdevind = seln-1; 
-fprintf('\n Selected soundard is %s \\ %s \n', handles.devs(seln).DeviceName, handles.devs(seln).HostAudioAPIName); 
+seln = get(hObject, 'Value');
+handles.currdevind = seln-1;
+fprintf('\n Selected soundard is %s \\ %s \n', handles.devs(seln).DeviceName, handles.devs(seln).HostAudioAPIName);
 
-% reset: 
+% reset:
 set([handles.ch1_popup, handles.ch2_popup, handles.ch3_popup, handles.ch4_popup], 'Enable', 'on');
 % copied code - bad!
 switch handles.devs(seln).NrOutputChannels
@@ -2288,7 +2288,7 @@ switch handles.devs(seln).NrOutputChannels
         set([handles.ch2_popup, handles.ch3_popup, handles.ch4_popup], 'Value', 5); % value 5 = 'Empty'
         set([handles.ch2_popup, handles.ch3_popup, handles.ch4_popup], 'Enable', 'off');
     case 2
-        set([handles.ch3_popup, handles.ch4_popup],  'Value', 5); 
+        set([handles.ch3_popup, handles.ch4_popup],  'Value', 5);
         set([handles.ch3_popup, handles.ch4_popup], 'Enable', 'off');
     case 3
         set(handles.ch4_popup, 'Value', 5);
@@ -2296,7 +2296,7 @@ switch handles.devs(seln).NrOutputChannels
     case 4
 end
 
-guidata(hObject, handles); 
+guidata(hObject, handles);
 
 % --- Executes during object creation, after setting all properties.
 function soundcard_popup_CreateFcn(hObject, eventdata, handles)
@@ -2310,19 +2310,19 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-    function handles = updateHandlesStruct(handles)
-        handles.SOA = str2double(get(handles.SOA_edit, 'String'));
-        handles.trialLen = str2double(get(handles.trial_len_edit, 'String'));
-        handles.stimStart = str2double(get(handles.stim_start_edit, 'String'));
-        handles.visDur = str2double(get(handles.dur_vis_edit, 'String'));
-        handles.audDur = str2double(get(handles.dur_aud_edit, 'String'));
-        handles.lightStart = str2double(get(handles.light_start_edit, 'String'));
-        handles.lightStop = str2double(get(handles.light_stop_edit, 'String'));
-        handles.light = ~strcmp(get(get(handles.light_panel, 'SelectedObject'), 'String'), 'No light');
-        handles.aud = ~strcmp(get(get(handles.aud_stim_panel, 'SelectedObject'), 'String'), 'No auditory');
-        handles.vis = ~strcmp(get(get(handles.vis_stim_panel, 'SelectedObject'), 'String'), 'No visual');
-        
-        
+function handles = updateHandlesStruct(handles)
+handles.SOA = str2double(get(handles.SOA_edit, 'String'));
+handles.trialLen = str2double(get(handles.trial_len_edit, 'String'));
+handles.stimStart = str2double(get(handles.stim_start_edit, 'String'));
+handles.visDur = str2double(get(handles.dur_vis_edit, 'String'));
+handles.audDur = str2double(get(handles.dur_aud_edit, 'String'));
+handles.lightStart = str2double(get(handles.light_start_edit, 'String'));
+handles.lightStop = str2double(get(handles.light_stop_edit, 'String'));
+handles.light = ~strcmp(get(get(handles.light_panel, 'SelectedObject'), 'String'), 'No light');
+handles.aud = ~strcmp(get(get(handles.aud_stim_panel, 'SelectedObject'), 'String'), 'No auditory');
+handles.vis = ~strcmp(get(get(handles.vis_stim_panel, 'SelectedObject'), 'String'), 'No visual');
+
+
 
 
 
@@ -2426,11 +2426,11 @@ if ~handles.pub_light_level
     set(hObject, 'String', 'Disconnect','ForegroundColor', [1 0 0]);
 else
     handles.pub_light_level = disconnectZMQport(handles.light_ctx, handles.light_pub_socket, handles.light_pub_address);
-    handles.light_pub_socket = []; 
-    %handles.pub_light_level = 0; 
+    handles.light_pub_socket = [];
+    %handles.pub_light_level = 0;
     set(hObject, 'String', 'Connect', 'ForegroundColor', [0 1 0]);
 end
- guidata(hObject, handles);
+guidata(hObject, handles);
 
 % --- Executes when user attempts to close figure1.
 function figure1_CloseRequestFcn(hObject, eventdata, handles)
@@ -2458,9 +2458,60 @@ function aud_BL_check_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of aud_BL_check
 if get(hObject, 'Value')
-   fh = figure; 
-   handles.aud_BL_fh = fh; 
-else 
+    fh = figure('Position', [100 400 300 300], 'Name', 'Auditory baseline');
+    set(fh, 'menubar', 'none');
+    %keyboard
+    bg = uibuttongroup(fh,'Position', [0 0 1 1]);
+    %%% radio buttons:
+    uicontrol('Style', 'Text', 'Units', 'Normalized', 'Position',[0.1 0.9 0.5 0.05], 'String', 'Auditory BL params:', 'FontSize', 12);
+    handles.clicks_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+        'Position', [0.02 0.8 0.3 0.08], 'String', 'Clicks', 'FontSize', 12);
+    handles.white_noise_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+        'Position', [0.02 0.7 0.5 0.08], 'String', 'White noise', 'FontSize', 12);
+    handles.tone_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+        'Position', [0.02 0.6 0.5 0.08], 'String', 'Tone', 'FontSize', 12);
+    handles.load_wave_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+        'Position', [0.02 0.5 0.5 0.08], 'String', 'Load wave', 'FontSize', 12);
+    handles.no_auditory_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+        'Position', [0.02 0.4 0.5 0.08], 'String', 'No auditory', 'FontSize', 12);
+    
+    %%%
+    handles.dur_aud_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+        'Position', [0.1 0.13 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.dur_aud_edit, 'String'));
+    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+        'Position', [0.1 0.23 0.3 0.06], 'String', 'Dur (ms)')
+    %    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+    %        'Position', [0.02 0.02 0.3 0.06], 'String', 'Width')
+    %    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+    %        'Position', [0.45 0.04 0.3 0.06], 'String', 'Height')
+    %    handles.vis_width_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+    %        'Position', [0.3 0.02 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.vis_width_edit, 'String'));
+    %       handles.vis_height_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+    %        'Position', [0.7 0.02 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.vis_height_edit, 'String'));
+    
+    handles.clicks_freq_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+        'Position', [0.75 0.7 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.clicks_freq_edit, 'String'));
+    
+    handles.tone_freq_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+        'Position', [0.75 0.58 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.tone_freq_edit, 'String'));
+    handles.atten_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+        'Position', [0.75 0.46 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.atten_edit, 'String'));
+    %     handles.angle_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+    %         'Position', [0.75 0.34 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.angle_edit, 'String'));
+    %
+    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+        'Position', [0.45 0.72 0.3 0.06], 'String', 'Click freq(Hz)')
+    
+    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+        'Position', [0.45 0.6 0.3 0.06], 'String', 'Tone freq(Hz)')
+    
+    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+        'Position', [0.45 0.48 0.3 0.06], 'String', 'Atten(dB)')
+    %
+    %          uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+    %        'Position', [0.45 0.36 0.3 0.06], 'String', 'Tilt angle')
+    handles.aud_BL_fh = fh;
+else
     if isfield(handles, 'aud_BL_fh') && ishandle(handles.aud_BL_fh)
         close(handles.aud_BL_fh);
     end
@@ -2477,64 +2528,73 @@ function vis_BL_check_Callback(hObject, eventdata, handles)
 % Hint: get(hObject,'Value') returns toggle state of vis_BL_check
 
 if get(hObject, 'Value')
-   fh = figure('Position', [100 500 250 300], 'Name', 'Visual baseline'); 
-   set(fh, 'menubar', 'none');
-   %keyboard
-   bg = uibuttongroup(fh,'Position', [0 0 1 1]); 
-   %%% radio buttons: 
-   uicontrol('Style', 'Text', 'Units', 'Normalized', 'Position',[0.4 0.85 0.5 0.1], 'String', 'Visual BL params:', 'FontSize', 12); 
-   handles.flash_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-       'Position', [0.02 0.8 0.3 0.08], 'String', 'Flash', 'FontSize', 12); 
-   handles.flash_pulses_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-       'Position', [0.02 0.7 0.5 0.08], 'String', 'Flash pulses', 'FontSize', 12); 
-   handles.gratings_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-       'Position', [0.02 0.6 0.5 0.08], 'String', 'Drifting gratings', 'FontSize', 12); 
-   handles.raindropper_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-       'Position', [0.02 0.5 0.5 0.08], 'String', 'Raindropper', 'FontSize', 12); 
-   handles.load_movie_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-       'Position', [0.02 0.4 0.5 0.08], 'String', 'Load movie', 'FontSize', 12); 
-   handles.no_visual_radio_BL  = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-       'Position', [0.02 0.3 0.5 0.08], 'String', 'No visual', 'FontSize', 12); 
-   %%%
-   handles.dur_vis_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
-       'Position', [0.1 0.13 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.dur_vis_edit, 'String')); 
-   uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
-       'Position', [0.1 0.23 0.3 0.06], 'String', 'Dur (ms)')
-   uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
-       'Position', [0.02 0.02 0.3 0.06], 'String', 'Width')
-   uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
-       'Position', [0.5 0.02 0.3 0.06], 'String', 'Height')
-   handles.vis_width_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
-       'Position', [0.3 0.02 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.vis_width_edit, 'String')); 
-      handles.vis_height_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
-       'Position', [0.7 0.02 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.vis_height_edit, 'String')); 
-   
-   handles.contrast_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
-       'Position', [0.75 0.7 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.contrast_edit, 'String')); 
-   
-%    
-%    
-%    handles.vis_freq_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
-%        'Position', [0.7 0.7 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.vis_freq_edit, 'String'));   
-%    handles.cycles_per_sec_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
-%        'Position', [0.7 0.02 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.cycles_per_sec_edit, 'String')); 
-% %    handles.angle_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
-% %        'Position', [0.7 0.02 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.angle_edit, 'String')); 
-% %    
-%    keyboard
-%    
-%    
-%    handles.vis_BL_fh = fh; 
-%    
-
-   
-else 
+    fh = figure('Position', [100 100 300 300], 'Name', 'Visual baseline');
+    set(fh, 'menubar', 'none');
+    %keyboard
+    bg = uibuttongroup(fh,'Position', [0 0 1 1]);
+    %%% radio buttons:
+    uicontrol('Style', 'Text', 'Units', 'Normalized', 'Position',[0.1 0.9 0.5 0.05], 'String', 'Visual BL params:', 'FontSize', 12);
+    handles.flash_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+        'Position', [0.02 0.8 0.3 0.08], 'String', 'Flash', 'FontSize', 12);
+    handles.flash_pulses_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+        'Position', [0.02 0.7 0.5 0.08], 'String', 'Flash pulses', 'FontSize', 12);
+    handles.gratings_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+        'Position', [0.02 0.6 0.5 0.08], 'String', 'Drifting gratings', 'FontSize', 12);
+    handles.raindropper_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+        'Position', [0.02 0.5 0.5 0.08], 'String', 'Raindropper', 'FontSize', 12);
+    handles.load_movie_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+        'Position', [0.02 0.4 0.5 0.08], 'String', 'Load movie', 'FontSize', 12);
+    handles.no_visual_radio_BL  = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
+        'Position', [0.02 0.3 0.5 0.08], 'String', 'No visual', 'FontSize', 12);
+    %%%
+    handles.dur_vis_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+        'Position', [0.1 0.13 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.dur_vis_edit, 'String'));
+    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+        'Position', [0.1 0.23 0.3 0.06], 'String', 'Dur (ms)')
+    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+        'Position', [0.02 0.02 0.3 0.06], 'String', 'Width')
+    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+        'Position', [0.45 0.04 0.3 0.06], 'String', 'Height')
+    handles.vis_width_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+        'Position', [0.3 0.02 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.vis_width_edit, 'String'));
+    handles.vis_height_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+        'Position', [0.7 0.02 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.vis_height_edit, 'String'));
+    
+    handles.contrast_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+        'Position', [0.75 0.7 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.contrast_edit, 'String'));
+    
+    %
+    
+    handles.vis_freq_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+        'Position', [0.75 0.58 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.vis_freq_edit, 'String'));
+    handles.cycles_per_sec_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+        'Position', [0.75 0.46 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.cycles_per_sec_edit, 'String'));
+    handles.angle_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
+        'Position', [0.75 0.34 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.angle_edit, 'String'));
+    
+    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+        'Position', [0.45 0.72 0.3 0.06], 'String', 'Contrast')
+    
+    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+        'Position', [0.45 0.6 0.3 0.06], 'String', 'Frequency 1/')
+    
+    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+        'Position', [0.45 0.48 0.3 0.06], 'String', 'Cycles per sec')
+    
+    uicontrol(bg, 'Style', 'text', 'Units', 'Normalized',...
+        'Position', [0.45 0.36 0.3 0.06], 'String', 'Tilt angle')
+    
+    handles.vis_BL_fh = fh;
+    
+    
+    
+else
     if isfield(handles, 'vis_BL_fh') && ishandle(handles.vis_BL_fh)
         close(handles.vis_BL_fh);
     end
 end
-guidata(hObject, handles); 
+guidata(hObject, handles);
 
-    
-   
-    
+
+
+
