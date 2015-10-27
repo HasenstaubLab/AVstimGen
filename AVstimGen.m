@@ -7,7 +7,7 @@ function varargout = AVstimGen(varargin)
 %
 % Ryan Morrill, 2014
 
-% Last Modified by GUIDE v2.5 29-Jun-2015 14:32:15
+% Last Modified by GUIDE v2.5 03-Aug-2015 15:05:09
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -214,7 +214,10 @@ cyc = str2double(get(handles.cycles_edit, 'String'));
 % audio.aud_only_BL = get(handles.aud_BL_check, 'Value');
 % visual.vis_only_BL = get(handles.vis_BL_check, 'Value');
 
-if get(handles.aud_BL_check, 'Value')
+aud_BL_flag = get(handles.aud_BL_check, 'Value');
+vis_BL_flag = get(handles.vis_BL_check, 'Value'); 
+
+if aud_BL_flag
     vars_loop = [vars_loop 'aud_BL'];
     vals_loop = [vals_loop zeros(size(vals_loop,1),1)];
     vals_loop = [vals_loop; [zeros(1,size(vals_loop,2)-1) 1]]; 
@@ -222,7 +225,7 @@ if get(handles.aud_BL_check, 'Value')
     audio.freq_BL = str2double(get(handles.tone_freq_edit_BL, 'String')); 
 end
 
-if get(handles.vis_BL_check, 'Value')
+if vis_BL_flag
     vars_loop = [vars_loop 'vis_BL'];
     vals_loop = [vals_loop zeros(size(vals_loop,1),1)];
     vals_loop = [vals_loop; [zeros(1,size(vals_loop,2)-1) 1]]; 
@@ -434,8 +437,12 @@ end
 % loop visual stimulus mode
 if ~isempty(loop_vis_stim)
     visual.vis_stim = vals_loop(:,loop_vis_stim);
-else
+else 
     visual.vis_stim = ones(1,cyc); % defaults to having visual stimulus on every trial
+end
+
+if aud_BL_flag 
+    visual.vis_stim(find(audio.aud_only_BL)) = 0; 
 end
 
 
@@ -452,6 +459,8 @@ if ~isempty(loop_audio_dur)
 else
     audio.dur = repmat(handles.audDur,1,cyc);
 end
+
+
 
 if ~isempty(loop_audio_freq)
     audio.freq = vals_loop(:,loop_audio_freq);
@@ -508,7 +517,7 @@ switch aud_select
         disp('Getting lengths of playlist files');
         for k = 1:cyc
             if ~isempty(strfind(audio.params_other{k}, '.wav'))
-                info = audioinfo(audio.parms_other{k});
+                info = audioinfo(audio.params_other{k});
                 audio.dur(k) = info.Duration*1000; % in ms
             elseif ~isempty(strfind(audio.params_other{k}, '.mat'))
                 matinfo = matfile(audio.params_other{k});
@@ -517,7 +526,11 @@ switch aud_select
                     errordlg(sprintf('File %s does not contain variable ''y'', check that this is a mat file for sound playback', audio.params_other{k}), 'No audio found');
                     return
                 else
-                    audio.dur(k) = (info.size(1)/audio.Fs)*1e3;
+                    if info.size(2)>info.size(1)
+                        audio.dur(k) = (info.size(2)/audio.Fs)*1e3;
+                    else
+                        audio.dur(k) = (info.size(1)/audio.Fs)*1e3;
+                    end
                 end
             end
         end
@@ -598,7 +611,7 @@ visual.contrast = str2double(get(handles.contrast_edit, 'String'))/100*0.5;
 visual.frequency_pixel = 1/str2double(get(handles.vis_freq_edit, 'String'));
 visual.cycles_perSec = str2double(get(handles.cycles_per_sec_edit, 'String'));
 visual.angle = str2double(get(handles.angle_edit, 'String'));
-visual.rotateMode = [];
+visual.rotateMode = []; % 
 visual.sin_varying = get(handles.sinusoidal_check, 'Value');
 
 switch vis_select
@@ -718,7 +731,6 @@ pause(0.2);
 visual.syncFlashDur = 30/1000; %30ms
 visual.syncFlashDims = [0 0 100 100];
 % visual.flashFreq = 5;
-keyboard
 AVengine(audio, visual, params, handles.status_text, handles.tcp_handle, handles.pub_socket, handles.light_pub_socket, session_save);
 
 
@@ -2497,6 +2509,13 @@ function figure1_CloseRequestFcn(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: delete(hObject) closes the figure
+if isfield(handles, 'aud_BL_fh') && ishandle(handles.aud_BL_fh)
+    close(handles.aud_BL_fh);
+end
+if isfield(handles, 'vis_BL_fh') && ishandle(handles.vis_BL_fh)
+    close(handles.vis_BL_fh);
+end
+
 delete(hObject);
 
 
@@ -2516,22 +2535,22 @@ function aud_BL_check_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of aud_BL_check
 if get(hObject, 'Value')
-    fh = figure('Position', [100 400 300 300], 'Name', 'Auditory baseline');
+    fh = figure('Position', [100 400 300 300], 'Name', 'Auditory baseline', 'NumberTitle', 'Off');
     set(fh, 'menubar', 'none');
     %keyboard
     bg = uibuttongroup(fh,'Position', [0 0 1 1]);
     %%% radio buttons:
     uicontrol('Style', 'Text', 'Units', 'Normalized', 'Position',[0.1 0.9 0.5 0.05], 'String', 'Auditory BL params:', 'FontSize', 12);
     handles.clicks_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-        'Position', [0.02 0.8 0.3 0.08], 'String', 'Clicks', 'FontSize', 12);
+        'Position', [0.02 0.8 0.3 0.08], 'String', 'Clicks', 'FontSize', 14, 'Value', get(handles.clicks_radio, 'Value'));
     handles.white_noise_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-        'Position', [0.02 0.7 0.5 0.08], 'String', 'White noise', 'FontSize', 12);
+        'Position', [0.02 0.7 0.5 0.08], 'String', 'White noise', 'FontSize', 14, 'Value', get(handles.white_noise_radio, 'Value'));
     handles.tone_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-        'Position', [0.02 0.6 0.5 0.08], 'String', 'Tone', 'FontSize', 12);
+        'Position', [0.02 0.6 0.5 0.08], 'String', 'Tone', 'FontSize', 14, 'Value', get(handles.tone_radio, 'Value'));
     handles.load_wave_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-        'Position', [0.02 0.5 0.5 0.08], 'String', 'Load wave', 'FontSize', 12);
+        'Position', [0.02 0.5 0.5 0.08], 'String', 'Load wave', 'FontSize', 14, 'Value', get(handles.load_wave_radio, 'Value'));
     handles.no_auditory_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-        'Position', [0.02 0.4 0.5 0.08], 'String', 'No auditory', 'FontSize', 12);
+        'Position', [0.02 0.4 0.5 0.08], 'String', 'No auditory', 'FontSize', 14, 'Value', get(handles.no_auditory_radio, 'Value'));
     
     %%%
     handles.dur_aud_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
@@ -2588,24 +2607,24 @@ function vis_BL_check_Callback(hObject, eventdata, handles)
 % Hint: get(hObject,'Value') returns toggle state of vis_BL_check
 
 if get(hObject, 'Value')
-    fh = figure('Position', [100 100 300 300], 'Name', 'Visual baseline');
+    fh = figure('Position', [100 100 300 300], 'Name', 'Visual baseline', 'NumberTitle', 'off');
     set(fh, 'menubar', 'none');
     %keyboard
     bg = uibuttongroup(fh,'Position', [0 0 1 1]);
     %%% radio buttons:
     uicontrol('Style', 'Text', 'Units', 'Normalized', 'Position',[0.1 0.9 0.5 0.05], 'String', 'Visual BL params:', 'FontSize', 12);
     handles.flash_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-        'Position', [0.02 0.8 0.3 0.08], 'String', 'Flash', 'FontSize', 12);
+        'Position', [0.02 0.8 0.3 0.08], 'String', 'Flash', 'FontSize', 14, 'Value', get(handles.flash_radio, 'Value'));
     handles.flash_pulses_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-        'Position', [0.02 0.7 0.5 0.08], 'String', 'Flash pulses', 'FontSize', 12);
+        'Position', [0.02 0.7 0.5 0.08], 'String', 'Flash pulses', 'FontSize', 14, 'Value', get(handles.flash_pulses_radio, 'Value'));
     handles.gratings_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-        'Position', [0.02 0.6 0.5 0.08], 'String', 'Drifting gratings', 'FontSize', 12);
+        'Position', [0.02 0.6 0.5 0.08], 'String', 'Drifting gratings', 'FontSize', 14, 'Value', get(handles.gratings_radio, 'Value'));
     handles.raindropper_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-        'Position', [0.02 0.5 0.5 0.08], 'String', 'Raindropper', 'FontSize', 12);
+        'Position', [0.02 0.5 0.5 0.08], 'String', 'Raindropper', 'FontSize', 14, 'Value', get(handles.raindropper_radio, 'Value'));
     handles.load_movie_radio_BL = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-        'Position', [0.02 0.4 0.5 0.08], 'String', 'Load movie', 'FontSize', 12);
+        'Position', [0.02 0.4 0.5 0.08], 'String', 'Load movie', 'FontSize', 14, 'Value', get(handles.load_movie_radio, 'Value'));
     handles.no_visual_radio_BL  = uicontrol(bg, 'Style', 'radiobutton', 'Units', 'Normalized', ...
-        'Position', [0.02 0.3 0.5 0.08], 'String', 'No visual', 'FontSize', 12);
+        'Position', [0.02 0.3 0.5 0.08], 'String', 'No visual', 'FontSize', 14, 'Value', get(handles.no_visual_radio, 'Value'));
     %%%
     handles.dur_vis_edit_BL = uicontrol(bg, 'Style', 'edit', 'Units', 'Normalized',...
         'Position', [0.1 0.13 0.2 0.1], 'BackGroundColor', 'w', 'String', get(handles.dur_vis_edit, 'String'));
@@ -2654,7 +2673,3 @@ else
     end
 end
 guidata(hObject, handles);
-
-
-
-
