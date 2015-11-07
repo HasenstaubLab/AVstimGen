@@ -662,18 +662,28 @@ switch vis_select
         visual.useMovie = 1;
         visual.useFlashMode = 0;
         visual.noVisual = 0;
+        visual.updatePhase = 0; 
     case 'Load movie'
         visual.stimMode = 'LM';
         visual.noVisual = 0;
         visual.useMovie = 1;
         visual.useFlashMode = 0;
         visual.noVisual = 0;
+        visual.updatePhase = 0; 
     case 'No visual'
         visual.stimMode = 'NV';
         visual.useProceduralTex = 0;
         visual.useMovie = 0;
         visual.useFlashMode = 0;
         visual.noVisual = 1;
+        visual.updatePhase = 0; 
+    case 'Checkerboard'
+        visual.stimMode = 'CB'; 
+        visual.useProceduralTex = 0; 
+        visual.useMovie = 0; 
+        visual.useFlashMode = 0; 
+        visual.noVisual = 0; 
+        visual.updatePhase = 0; 
 end
 
 % light test
@@ -701,14 +711,11 @@ if ~isdir(session_save.local_dir)
     mkdir(session_save.local_dir);
 end
 
-cd(session_save.local_dir);
-session_save.local_dir = [handles.AVstimDir 'StimData'];
-%params.date_str =  datestr(now, 'dd_mmmyyyy_HH_MM_SS');
-
 params.date_str = datestr(now, 'yyyy-mm-dd_HH-MM-SS');
 session_save.str=['stimInfoAll_' params.date_str '.mat'];
-save(session_save.str, 'audio', 'visual', 'params')
+save(fullfile(session_save.local_dir, session_save.str), 'audio', 'visual', 'params')
 fprintf('Saving stim info locally to %s\n', fullfile(session_save.local_dir, session_save.str));
+
 
 % try
 %     cd(session_save.server_dir)
@@ -1706,6 +1713,7 @@ set(handles.flash_radio, 'Value', guiState.flash_radio);
 set(handles.flash_pulses_radio, 'Value', guiState.flash_pulses_radio);
 set(handles.gratings_radio, 'Value', guiState.gratings_radio);
 set(handles.raindropper_radio, 'Value', guiState.raindropper_radio);
+set(handles.checkerboard_radio, 'Value', guiState.checkerboard_radio); 
 set(handles.load_movie_radio, 'Value', guiState.load_movie_radio);
 set(handles.no_visual_radio, 'Value', guiState.no_visual_radio);
 set(handles.sinusoidal_check, 'Value', guiState.sinusoidal_check);
@@ -1800,6 +1808,7 @@ guiState.flash_radio = get(handles.flash_radio, 'Value');
 guiState.flash_pulses_radio = get(handles.flash_pulses_radio, 'Value');
 guiState.gratings_radio = get(handles.gratings_radio, 'Value');
 guiState.raindropper_radio = get(handles.raindropper_radio, 'Value');
+guiState.checkerboard_radio = get(handles.checkerboard_radio, 'Value'); 
 guiState.load_movie_radio = get(handles.load_movie_radio, 'Value');
 guiState.no_visual_radio = get(handles.no_visual_radio, 'Value');
 

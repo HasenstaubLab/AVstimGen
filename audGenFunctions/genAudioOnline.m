@@ -23,7 +23,7 @@ end
 if ~strcmp(char(audio.genFunc), 'genNoAudio') & ~visual.vis_only_BL(ind)
     aud_trial = 1;
     % apply 4kHz highpass zero-phase filter
-    Wn = 3.9e3/(0.5*audio.Fs); % pass above 3.9 kHz
+    Wn = 3.5e3/(0.5*audio.Fs); % pass above 3.9 kHz
     n = 1000; % 1000th order filter (before 100-order was too low)
     b = fir1(n, Wn, 'high');
     audio_data = filtfilt(b,1,audio_data);

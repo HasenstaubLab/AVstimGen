@@ -79,10 +79,19 @@ WaitSecs(2); % Wait during change of display mode
 win = Screen('OpenWindow', screenid, restCol);
 AssertGLSL;
 
+% set special background for checkerboard
+[win_width, win_height] = Screen('WindowSize', win);
+if strcmp(visual.stimMode,'CB')
+    BGcheckImg = 255- genCheckerboard(win_width, win_height, white);
+    BGtexHandle = Screen('MakeTexture', win, BGcheckImg);
+else
+    BGtexHandle = Screen('MakeTexture', win, ones(win_height, win_width)*restCol);
+end
+Screen('DrawTexture', win, BGtexHandle);
+Screen('Flip', win);
+
 ifi = Screen('GetFlipInterval', win);
 fR = Screen('NominalFrameRate', screenid);
-
-[win_width win_height] = Screen('WindowSize', win);
 
 % for incrementing phase if using gratings
 phase = 0;
@@ -108,42 +117,8 @@ sugLat = ifi * 2;
 
 padLen = 10; % pad before/after the trial: hard-coded for now, change later
 
-switch visual.stimMode;
-    case 'LM' % MOVIE
-        %movieFrameIndices=mod(0:(movieDurationFrames-1), numFrames) + 1;
-    case 'DG' % DRIFTING GRATINGS
-        texHandle = genGratings(win, visual.width, visual.height);
-        PTparams = {phase visual.frequency_pixel visual.contrast 0}; %
-    case 'NS' % NOISE
-        %
-        PTparams = {visual.contrast 1 0 0}; %% CHECK THIS
-    case 'GB' % GABOR
-        %
-        PTparams = {};
-    case 'RD' % RAINDROPPER
-        moviedata = generateNoise_contrast(.05,10,0,0.5,visual.dur/1e3,visual.dur/1e3,fR);
-        rdRect = [1 1 visual.width visual.height];
-        rdRect = CenterRectOnPoint(rdRect, round(win_width/2), round(win_height/2));
-        %
-    case 'FL' % FLASHES
-        flashRect = [1 1 visual.width visual.height];
-        flashRect = CenterRectOnPoint(flashRect, round(win_width/2), round(win_height/2));
-        flashLums = ones(1, movieDurFrames)*white;
-    case 'FP' % FLASH PULSES
-        flashRect = [1 1 visual.width visual.height];
-        flashRect = CenterRectOnPoint(flashRect, round(win_width/2), round(win_height/2));
-        
-        % precalculate frame luminances for flashes
-        if visual.sin_varying
-            %flashLums = (sin(linspace(0, visual.dur/1000*visual.cycles_perSec*2*pi, movieDurFrames))+1)*0.5*white;
-            flashLums = (sin(linspace(1.5*pi, visual.dur/1000*visual.cycles_perSec*2*pi+(pi*1.5), movieDurFrames))+1)*0.5*white;
-        else
-            %         flashHalf = round(1/(visual.cycles_perSec*2)*fR)
-            %         flashCycle = [ones(1,flashHalf) zeros(1,flashHalf)]*white;
-            %         flashLums = repmat(flashCycle, 1, floor(movieDurFrames/length(flashCycle)));
-            flashLums = square(linspace(1.5*pi, visual.dur/1000*visual.cycles_perSec*2*pi+(1.5*pi), movieDurFrames)+1)*white; %% same thing, quicker
-        end
-end
+% calculate parameters for visual stimulus
+[texHandle, stimRect, moviedata, PTparams, flashLums] = retVisParams(win, visual, movieDurFrames, fR, white);
 
 % Run PsychPortAudio very briefly to initialize: should take care of
 % initialization-related delays
@@ -172,7 +147,7 @@ preVflips = sugLat_flips + SOA_flips;
 
 if params.trigger_control
     % First trial control trigger
-    buffhandle = genTrControlTriggers(pahandle, audio, params, 1); 
+    buffhandle = genTrControlTriggers(pahandle, audio, params, 1);
     PsychPortAudio('FillBuffer', pahandle, buffhandle);
     startTime = PsychPortAudio('Start', pahandle,1,0,1);
 end
@@ -216,7 +191,7 @@ if params.send_messages
 end
 
 if params.pub_messages % send the first message
-    % someday refactor this section 
+    % someday refactor this section
     publ_bytes = zeros(1,params.cycles);
     
     msg_len_tot = length(seq_msg);
@@ -263,15 +238,15 @@ if params.pub_light_level
     zmq_send(light_pub_socket, uint8(num2str(params.light_level(1))));
 end
 
-pauseUntilAudFinish(pahandle); % in case trigger control is still being sent 
+pauseUntilAudFinish(pahandle); % in case trigger control is still being sent
 
 buffhandle = genAudioOnline(pahandle, audio, visual, params, lpind); % first call to genAudioOnline
 PsychPortAudio('FillBuffer', pahandle, buffhandle);
 
-exit_flag = CheckForEsc(escapeKey); 
+exit_flag = CheckForEsc(escapeKey);
 if exit_flag
-    disp('EARLY ABORT, NO STIM PLAYED'); 
-else 
+    disp('EARLY ABORT, NO STIM PLAYED');
+else
     for j = 1:params.cycles
         if params.send_messages
             zeroMQwrapper('Send',tcp_handle ,sprintf('TrialStart %d', j));
@@ -279,89 +254,130 @@ else
         if params.pub_messages
             zmq_send(pub_socket, uint8(sprintf('TR ind %d START', j)));
         end
-        % three types of movie production: use premade movie (visual.useMovie)
-        % use procedural textures (visual.useProceduralTex)
-        % use flashes (visual.useFlashMode)
         
-        if visual.useMovie % ONLY WORKS WITH RAINDROPPER AT THE MOMENT
-            vbl = Screen('Flip', win);
-            PsychPortAudio('Start', pahandle, 1, vbl1(j)+sugLat+SOA_Tdel);
-            if visual.vis_stim(j)
-                % t1 = GetSecs;
-                for i=1:movieDurFrames
-                    exit_flag = CheckForEsc(escapeKey); 
-                    if exit_flag
-                        break
-                    end
-                    % tex = Screen('GetMovieImage', win, movie);
-                    tex = Screen('MakeTexture', win, moviedata(:,:,i));
-                    
-                    if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
-                        Screen('FillRect', win, white, syncFlashDims);
-                    end
-                    % Draw image:
-                    Screen('DrawTexture', win, tex, [], rdRect);
-                    vbl = Screen('Flip', win, (vbl+0.5*ifi));
-                end
-                %                 t2 = GetSecs;
-                %                 fprintf('\nTook %f secs', t2-t1);
-            end
-            
-        elseif visual.useProceduralTex
-            % PsychPortAudio('Start', pahandle);
+        if visual.noVisual
+            PsychPortAudio('Start', pahandle);
+        else
+            % begin stimulus presentation
+            Screen('DrawTexture', win, BGtexHandle);
             vbl1(j) = Screen('Flip', win);
             PsychPortAudio('Start', pahandle, 1, vbl1(j)+sugLat+SOA_Tdel);
             if visual.vis_stim(j)
+                for k = 1:preVflips
+                    if k == 1
+                        Screen('DrawTexture', win, BGtexHandle);
+                        vbl = Screen('Flip', win, (vbl1(j)+0.5*ifi));
+                    else
+                        Screen('DrawTexture', win, BGtexHandle);
+                        vbl = Screen('Flip', win, (vbl+0.5*ifi));
+                    end
+                end
+                
                 for i = 1:movieDurFrames
+                    exit_flag = CheckForEsc(escapeKey);
+                    if exit_flag
+                        break
+                    end
                     
-                    if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
+                    if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr) % add in the sync Flashes
                         Screen('FillRect', win, white, syncFlashDims);
                     end
                     
-                    Screen('DrawTexture', win, texHandle, [], [], visual.angle, ...
+                    if visual.useMovie % texHandle is dynamic
+                        texHandle = Screen('MakeTexture', win, moviedata(:,:,i));
+                    end
+                    Screen('DrawTexture', win, texHandle, [], stimRect, visual.angle, ...
                         [], [], [], [], visual.rotateMode, [PTparams{:}]);
-                    %vbl = Screen('Flip', win, (vbl+0.5*ifi));
-                    vbl = Screen('Flip', win);
+                    
+                    vbl = Screen('Flip', win, (vbl+0.5*ifi));
+                    
                     if visual.updatePhase
                         PTparams{1} = PTparams{1} + phase_inc;
                     end
                 end
             end
-            
-        elseif visual.useFlashMode 
-            
-            vbl1(j) = Screen('Flip', win);
-            PsychPortAudio('Start', pahandle, 1, vbl1(j)+sugLat+SOA_Tdel);
-            if visual.vis_stim(j)
-                for k = 1:preVflips
-                    Screen('Flip', win); % better to have timing?
-                end
-                for i = 1:movieDurFrames
-                    exit_flag = CheckForEsc(escapeKey); 
-                    if exit_flag 
-                        break 
-                    end
-                    
-                    if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
-                        Screen('FillRect', win, white, syncFlashDims);
-                    end
-                    
-                    Screen('FillRect', win, flashLums(i), flashRect);
-                    if i == 1
-                        vbl2(j) = Screen('Flip', win); % for debug only
-                    else
-                        Screen('Flip', win);
-                    end
-                    
-                end
-            end
-            
-        elseif visual.noVisual
-            PsychPortAudio('Start', pahandle);
         end
-
-        Screen('FillRect', win, restCol);
+        
+        %         if visual.useMovie % ONLY WORKS WITH RAINDROPPER AT THE MOMENT
+        %             vbl = Screen('Flip', win);
+        %             PsychPortAudio('Start', pahandle, 1, vbl1(j)+sugLat+SOA_Tdel);
+        %             if visual.vis_stim(j)
+        %                 % t1 = GetSecs;
+        %                 for i=1:movieDurFrames
+        %                     exit_flag = CheckForEsc(escapeKey);
+        %                     if exit_flag
+        %                         break
+        %                     end
+        %                     % tex = Screen('GetMovieImage', win, movie);
+        %                     tex = Screen('MakeTexture', win, moviedata(:,:,i));
+        %
+        %                     if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
+        %                         Screen('FillRect', win, white, syncFlashDims);
+        %                     end
+        %                     % Draw image:
+        %                     Screen('DrawTexture', win, tex, [], rdRect);
+        %                     vbl = Screen('Flip', win, (vbl+0.5*ifi));
+        %                 end
+        %                 %                 t2 = GetSecs;
+        %                 %                 fprintf('\nTook %f secs', t2-t1);
+        %             end
+        %
+        %         elseif visual.useProceduralTex
+        %             % PsychPortAudio('Start', pahandle);
+        %             vbl1(j) = Screen('Flip', win);
+        %             PsychPortAudio('Start', pahandle, 1, vbl1(j)+sugLat+SOA_Tdel);
+        %             if visual.vis_stim(j)
+        %                 for i = 1:movieDurFrames
+        %
+        %                     if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
+        %                         Screen('FillRect', win, white, syncFlashDims);
+        %                     end
+        %
+        %                     Screen('DrawTexture', win, texHandle, [], [], visual.angle, ...
+        %                         [], [], [], [], visual.rotateMode, [PTparams{:}]);
+        %                     %vbl = Screen('Flip', win, (vbl+0.5*ifi));
+        %                     vbl = Screen('Flip', win);
+        %                     if visual.updatePhase
+        %                         PTparams{1} = PTparams{1} + phase_inc;
+        %                     end
+        %                 end
+        %             end
+        %
+        %         elseif visual.useFlashMode
+        %
+        %             vbl1(j) = Screen('Flip', win);
+        %             PsychPortAudio('Start', pahandle, 1, vbl1(j)+sugLat+SOA_Tdel);
+        %             if visual.vis_stim(j)
+        %                 for k = 1:preVflips
+        %                     Screen('Flip', win); % better to have timing?
+        %                 end
+        %                 for i = 1:movieDurFrames
+        %                     exit_flag = CheckForEsc(escapeKey);
+        %                     if exit_flag
+        %                         break
+        %                     end
+        %
+        %                     if i <= syncFlashDur_fr || i >= (movieDurFrames - syncFlashDur_fr)
+        %                         Screen('FillRect', win, white, syncFlashDims);
+        %                     end
+        %
+        %                     Screen('FillRect', win, flashLums(i), flashRect);
+        %                     if i == 1
+        %                         vbl2(j) = Screen('Flip', win); % for debug only
+        %                     else
+        %                         Screen('Flip', win);
+        %                     end
+        %
+        %                 end
+        %             end
+        %
+        %         elseif visual.noVisual
+        %             PsychPortAudio('Start', pahandle);
+        %         end
+        Screen('DrawTexture', win, BGtexHandle);
+        %Screen('FillRect', win, restCol);
         Screen('Flip', win);
+        
         
         pastatus = PsychPortAudio('GetStatus', pahandle);
         req_st_time = pastatus.RequestedStartTime;
@@ -408,7 +424,7 @@ else
             % replace auditory stimulus
             buffhandle = genAudioOnline(pahandle, audio, visual, params, lpind);
             PsychPortAudio('FillBuffer', pahandle, buffhandle);
-            [SOA_flips SOA_Tdel] = calcVdelay(params.SOA(lpind), params.stimStart(lpind), padLen, ifi);
+            [SOA_flips SOA_Tdel] = calcVdelay(params.SOA(lpind), params.stimStart(lpind), padLen, ifi); % recalculate visual delay
             preVflips = sugLat_flips + SOA_flips;
             
             % send light levels
@@ -465,7 +481,15 @@ if params.trigger_control
     PsychPortAudio('FillBuffer', pahandle, buffhandle);
     startTime = PsychPortAudio('Start', pahandle,1,0,1)
     % pause until playing finished
-    pauseUntilAudFinish(pahandle); 
+    pauseUntilAudFinish(pahandle);
+end
+
+if exist('texHandle') && ~isempty(texHandle)
+    Screen('Close', texHandle);
+end
+
+if exist('BGtexHandle') && ~isempty(BGtexHandle)
+    Screen('Close', BGtexHandle);
 end
 
 stop_it(pahandle, status_handles);
